@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../store';
-import { Shield, LogOut, Settings, List, User, Lock, AlertCircle, X } from 'lucide-react';
+import { Shield, LogOut, Settings, List, User, Lock, AlertCircle, X, Globe, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { supabase } from '../supabase';
@@ -110,9 +110,10 @@ function LoginModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function Header() {
-  const { t } = useTranslation();
-  const { db, currentUser, setCurrentUser, currentView, setCurrentView } = useAppContext();
+  const { t, i18n } = useTranslation();
+  const { db, currentUser, setCurrentUser, currentView, setCurrentView, isMuted, setIsMuted } = useAppContext();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -188,6 +189,53 @@ export default function Header() {
                 </button>
               </>
             )}
+
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className="flex items-center justify-center hover:text-amber-400 transition-colors p-1"
+              title={isMuted ? t('header.unmute') : t('header.mute')}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                className="flex items-center justify-center hover:text-amber-400 transition-colors p-1"
+                title={t('footer.language')}
+              >
+                <Globe className="w-4 h-4" />
+              </button>
+
+              {isLangDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setIsLangDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-32 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-20 overflow-hidden">
+                    <button
+                      onClick={() => {
+                        i18n.changeLanguage('zh-TW');
+                        setIsLangDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-xs hover:bg-stone-700 transition-colors ${i18n.language === 'zh-TW' ? 'text-amber-500 font-bold' : 'text-stone-300'}`}
+                    >
+                      繁體中文
+                    </button>
+                    <button
+                      onClick={() => {
+                        i18n.changeLanguage('en');
+                        setIsLangDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-xs hover:bg-stone-700 transition-colors ${i18n.language === 'en' ? 'text-amber-500 font-bold' : 'text-stone-300'}`}
+                    >
+                      English
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>

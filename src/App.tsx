@@ -31,15 +31,41 @@ const AppContent = () => {
   return <GuildDashboard guildId={currentView.guildId} />;
 };
 
+const AppContentWrapper = () => {
+  const { isMuted } = useAppContext();
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+
+  React.useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+      if (!isMuted) {
+        audioRef.current.play().catch(err => console.log("Autoplay blocked or error:", err));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isMuted]);
+
+  return (
+    <div className="min-h-screen bg-stone-100 text-stone-900 font-sans">
+      <audio
+        ref={audioRef}
+        src="https://bybjhpiusfnjlbhiesrp.supabase.co/storage/v1/object/public/bgm/Lineage.mp3"
+        loop
+        autoPlay
+      />
+      <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+        <AppContent />
+      </React.Suspense>
+      <ToastContainer />
+    </div>
+  );
+};
+
 export default function App() {
   return (
     <AppProvider>
-      <div className="min-h-screen bg-stone-100 text-stone-900 font-sans">
-        <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
-          <AppContent />
-        </React.Suspense>
-        <ToastContainer />
-      </div>
+      <AppContentWrapper />
     </AppProvider>
   );
 }

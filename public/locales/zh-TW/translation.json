@@ -216,7 +216,9 @@
     "costume_list": "服裝列表",
     "admin_settings": "後台設定",
     "logout": "登出({{user}})",
-    "login_btn": "登入"
+    "login_btn": "登入",
+    "mute": "靜音",
+    "unmute": "取消靜音"
   },
   "login": {
     "no_login_account": "此公會尚未設定登入帳號",

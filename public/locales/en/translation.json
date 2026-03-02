@@ -216,7 +216,9 @@
     "costume_list": "Costume List",
     "admin_settings": "Admin Settings",
     "logout": "Logout ({{user}})",
-    "login_btn": "Login"
+    "login_btn": "Login",
+    "mute": "Mute",
+    "unmute": "Unmute"
   },
   "login": {
     "no_login_account": "This guild has not set up a login account",

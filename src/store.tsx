@@ -69,6 +69,10 @@ interface AppContextType {
   toasts: Toast[];
   showToast: (message: string, type?: ToastType) => void;
   removeToast: (id: string) => void;
+
+  // Music management
+  isMuted: boolean;
+  setIsMuted: (muted: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -136,6 +140,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isOffline, setIsOffline] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isMuted, setIsMutedState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('isMuted');
+    return saved === 'true';
+  });
+
+  const setIsMuted = (muted: boolean) => {
+    setIsMutedState(muted);
+    localStorage.setItem('isMuted', muted.toString());
+  };
 
   const showToast = (message: string, type: ToastType = 'info') => {
     const id = uuidv4();
@@ -798,8 +811,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addCharacter, updateCharacter, deleteCharacter, updateCharactersOrder,
       addCostume, updateCostume, deleteCostume, updateCostumesOrder,
       updateUserPassword, updateUserRole, addUser, deleteUser,
-      restoreData,
-      toasts, showToast, removeToast
+      restoreData, toasts, showToast, removeToast,
+      isMuted, setIsMuted
     }}>
       {children}
     </AppContext.Provider>
