@@ -17,7 +17,8 @@ i18n
             'zh': ['zh-TW'],
             'default': ['zh-TW']
         },
-        supportedLngs: ['zh-TW', 'en'],   // 明確列出
+        supportedLngs: ['zh-TW', 'en', 'zh', 'zh-HK', 'zh-MO', 'zh-CN'],   // 明確列出所有可能被偵測到的中文變體
+        nonExplicitSupportedLngs: true, // 允許非精確匹配（如 zh-HK 匹配 zh）
         ns: ['translation'],
         defaultNS: 'translation',
         backend: {
