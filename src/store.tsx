@@ -65,7 +65,7 @@ interface AppContextType {
   deleteUser: (username: string) => Promise<void>;
 
   // Settings functions
-  updateSetting: (id: string, value: string) => Promise<void>;
+  updateSetting: (id: string, value: string, volume?: number) => Promise<void>;
 
   // Data management
   restoreData: (data: Partial<Database>) => Promise<void>;
@@ -264,7 +264,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchMembers = async (guildId: string, includeNote: boolean = false) => {
     if (isOffline) return;
 
-    setIsMembersLoading(true);
+    // Check if we already have members for this guild
+    const hasCachedMembers = Object.values(db.members).some(m => m.guildId === guildId);
+    
+    // Only show loading if we don't have any data for this guild
+    if (!hasCachedMembers) {
+      setIsMembersLoading(true);
+    }
+
     const selectQuery = includeNote
       ? '*'
       : 'id, name, guild_id, role, records, exclusive_weapons, updated_at, status, archive_remark';
@@ -282,9 +289,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const members = data.reduce((acc, member) => ({ ...acc, [member.id]: toCamel(member) }), {});
+    const newMembers = data.reduce((acc, member) => ({ ...acc, [member.id]: toCamel(member) }), {});
 
-    setDbState(prev => ({ ...prev, members }));
+    setDbState(prev => {
+      // Filter out old members of this guild from the previous state
+      // This ensures that if a member was deleted on the server, they are removed from local state
+      const otherGuildMembers = Object.entries(prev.members)
+        .filter(([_, m]) => m.guildId !== guildId)
+        .reduce((acc, [id, m]) => ({ ...acc, [id]: m }), {});
+
+      return {
+        ...prev,
+        members: { ...otherGuildMembers, ...newMembers }
+      };
+    });
+    
     setIsMembersLoading(false);
   };
 
@@ -883,17 +902,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateSetting = async (id: string, value: string) => {
+  const updateSetting = async (id: string, value: string, volume?: number) => {
     if (isOffline) return;
 
-    const { error } = await supabaseUpsert('settings', { id, bgm_url: value });
+    const updates: any = { id, bgm_url: value };
+    if (volume !== undefined) {
+      updates.bgm_volume = volume;
+    }
+
+    const { error } = await supabaseUpsert('settings', updates);
     if (error) throw error;
 
     setDbState(prev => ({
       ...prev,
       settings: {
         ...prev.settings,
-        [id]: { id, bgmUrl: value }
+        [id]: { 
+          id, 
+          bgmUrl: value,
+          bgmVolume: volume !== undefined ? volume : prev.settings[id]?.bgmVolume
+        }
       }
     }));
   };

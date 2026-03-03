@@ -40,6 +40,7 @@ const AppContentWrapper = () => {
   
   const firstSettingId = db.settings && Object.keys(db.settings).length > 0 ? Object.keys(db.settings)[0] : 'default';
   const BGM_URL = db.settings?.[firstSettingId]?.bgmUrl || "";
+  const BGM_VOLUME = (db.settings?.[firstSettingId]?.bgmVolume ?? 50) / 100;
 
   React.useEffect(() => {
     setAudioSrc("");
@@ -81,13 +82,14 @@ const AppContentWrapper = () => {
   React.useEffect(() => {
     if (audioRef.current) {
       audioRef.current.muted = isMuted;
+      audioRef.current.volume = BGM_VOLUME;
       if (!isMuted && audioSrc) {
         audioRef.current.play().catch(err => console.log("Autoplay blocked or error:", err));
       } else {
         audioRef.current.pause();
       }
     }
-  }, [isMuted, audioSrc]);
+  }, [isMuted, audioSrc, BGM_VOLUME]);
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-900 font-sans">

@@ -131,7 +131,7 @@ function ToolsManager() {
 
         await fetchAllMembers();
 
-        const macroId = `AKfycbyvqpgrZ_BMU94i6llQF9HjP89y8yAS0EyRsPUT1fncmsdZg-8GeyVyUHp0DunJUwezqQ`;
+        const macroId = `AKfycbyy8z1gVgBVcOcwz5B_MLAa0J80pMMBjtC6MFL-CJ4qkOHjDTunCB4ikajcAHMN2u4BcA`;
         const { guildList, guildLeaderList } = (await (await fetch(`https://script.google.com/macros/s/${macroId}/exec`,
           {
             method: "GET",
@@ -253,6 +253,70 @@ function ToolsManager() {
     });
   };
 
+  const handleImportCostume = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: t('tools.import_costumes'),
+      message: t('tools.confirm_import_costumes'),
+      isDanger: false,
+      onConfirm: async () => {
+        setIsProcessing(true);
+        closeConfirmModal();
+
+        const macroId = `AKfycbyw_0lj4mZjMB9lFE9vwCFiE2S9B84baJj3r4nPqWaYXkHAFHMWyGQtiecuk7eqaShy_w`;
+
+
+        const costumeList = (await (await fetch(`https://script.google.com/macros/s/${macroId}/exec`,
+          {
+            method: "GET",
+            mode: "cors",
+          })).json()).data;
+
+        const costumes = Object.values(db.costumes);
+        const characters = Object.values(db.characters);
+
+        const costumeDefineList = costumes.map((costume) => [
+          characters.find((character) => character.id == costume.characterId).name,
+          costume.name
+        ]);
+
+        const result = {};
+        for (let name of Object.keys(costumeList)) {
+
+          let costume = costumeList[name].slice(0, costumeDefineList.length);
+          let pName = name.replaceAll(/(<.+>)/g, "").match(/^@(.+)/)?.[1].trim();
+
+          costume.forEach((costumeEnhanced: string, i: number) => {
+            costumeEnhanced = costumeEnhanced.toString();
+            const [charName, costumeName] = costumeDefineList[i];
+            const charId = characters.find((character) => character.name === charName)?.id;
+            const costumeId = costumes.find((costume) => costume.characterId === charId && costume.name === costumeName)?.id;
+
+            if (charId && costumeId) {
+              if (!result[pName]) result[pName] = { records: {}, exclusiveWeapons: {} };
+              result[pName]["records"][costumeId] = { level: costumeEnhanced.split("")[0] ?? -1, };
+              result[pName]["exclusiveWeapons"][charId] = Boolean(costumeEnhanced.match(/E/));
+            }
+          });
+        }
+
+        const memberList = Object.values(db.members);
+
+        for (let member of memberList) {
+
+          if (!result[member.name]) {
+            continue;
+          }
+
+          await updateMember(member.id, result[member.name]);
+        }
+
+        setIsProcessing(false);
+      }
+    });
+
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold mb-6 text-stone-800 flex items-center gap-2">
@@ -295,6 +359,22 @@ function ToolsManager() {
           </button>
         </div>
 
+        <div className="bg-stone-50 p-8 rounded-2xl border border-stone-200 flex flex-col items-center justify-center text-center">
+          <div className="p-4 bg-amber-100 rounded-full text-amber-600 mb-4">
+            <ArrowUp className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-bold text-stone-800 mb-2">{t('tools.import_costumes')}</h3>
+          <p className="text-stone-500 mb-6 max-w-md">
+            {t('tools.import_costumes_desc')}
+          </p>
+          <button
+            onClick={handleImportCostume}
+            disabled={isProcessing}
+            className="px-8 py-3 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-all active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isProcessing ? t('common.processing') : t('tools.start_import')}
+          </button>
+        </div>
       </div>
 
       <ConfirmModal
@@ -1223,10 +1303,10 @@ function CostumesManager() {
 
   const handleUpdateCharacter = async () => {
     if (!selectedCharacterId) return;
-    await updateCharacter(selectedCharacterId, {
-      name: editCharacterName,
+    await updateCharacter(selectedCharacterId, { 
+      name: editCharacterName, 
       nameE: editCharacterNameE,
-      orderNum: editCharacterOrder
+      orderNum: editCharacterOrder 
     });
     showToast(t('costumes.update_character_success'), 'success');
   };
@@ -1587,26 +1667,28 @@ function BackupManager() {
 function SettingsManager() {
   const { t } = useTranslation(['admin', 'translation']);
   const { db, updateSetting, showToast } = useAppContext();
-
+  
   const firstSettingId = db.settings && Object.keys(db.settings).length > 0 ? Object.keys(db.settings)[0] : 'default';
   const [bgmUrl, setBgmUrl] = useState(db.settings?.[firstSettingId]?.bgmUrl || '');
+  const [bgmVolume, setBgmVolume] = useState(db.settings?.[firstSettingId]?.bgmVolume ?? 50);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (db.settings && Object.keys(db.settings).length > 0) {
       const id = Object.keys(db.settings)[0];
       setBgmUrl(db.settings[id].bgmUrl || '');
+      setBgmVolume(db.settings[id].bgmVolume ?? 50);
     }
   }, [db.settings]);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateSetting(firstSettingId, bgmUrl);
-      showToast(t('settings.save_success', '設定已儲存'), 'success');
+      await updateSetting(firstSettingId, bgmUrl, bgmVolume);
+      showToast(t('settings.save_success'), 'success');
     } catch (error: any) {
       console.error("Error saving settings:", error);
-      showToast(`${t('settings.save_failed', '設定儲存失敗')}: ${error.message}`, 'error');
+      showToast(`${t('settings.save_failed')}: ${error.message}`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -1620,11 +1702,11 @@ function SettingsManager() {
       </h2>
 
       <div className="bg-stone-50 p-6 rounded-2xl border border-stone-200">
-        <h3 className="text-lg font-bold text-stone-800 mb-4">{t('settings.bgm', '背景音樂')}</h3>
+        <h3 className="text-lg font-bold text-stone-800 mb-4">{t('settings.bgm')}</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-stone-600 mb-1">
-              {t('settings.bgm_url', '背景音樂 URL')}
+              {t('settings.bgm_url')}
             </label>
             <input
               type="text"
@@ -1634,16 +1716,31 @@ function SettingsManager() {
               className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
             />
             <p className="text-xs text-stone-500 mt-2">
-              {t('settings.bgm_hint', '請輸入背景音樂的完整網址，支援 mp3 等常見格式。')}
+              {t('settings.bgm_hint')}
             </p>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-stone-600 mb-1">
+              {t('settings.bgm_volume')} ({bgmVolume}%)
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={bgmVolume}
+              onChange={(e) => setBgmVolume(Number(e.target.value))}
+              className="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
+            />
+          </div>
+
           <div className="flex justify-end">
             <button
               onClick={handleSave}
               disabled={isSaving}
               className="px-6 py-2 bg-amber-600 text-white rounded-lg font-bold hover:bg-amber-700 transition-all active:scale-95 shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
-              {isSaving ? t('common.saving', '儲存中...') : <><Save className="w-4 h-4" /> {t('common.save', '儲存')}</>}
+              {isSaving ? t('common.saving') : <><Save className="w-4 h-4" /> {t('common.save')}</>}
             </button>
           </div>
         </div>

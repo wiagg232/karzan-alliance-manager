@@ -300,6 +300,14 @@
     "not_found": "Resource not found",
     "invalid_input": "Invalid input"
   },
+  "settings": {
+    "bgm": "Background Music",
+    "bgm_url": "BGM URL",
+    "bgm_volume": "BGM Volume",
+    "bgm_hint": "Please enter the full URL of the background music, supporting mp3 and other common formats.",
+    "save_success": "Settings saved",
+    "save_failed": "Failed to save settings"
+  },
   "footer": {
     "copyright": "© 2026 Browndust2 - Kazran Alliance Manager by 爽世 & ChaosOp. All rights reserved.",
     "disclaimer": "This website is not affiliated with or endorsed by Browndust2. All trademarks and copyrights of the game and its characters are owned by their respective owners.",

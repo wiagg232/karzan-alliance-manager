@@ -52,6 +52,7 @@ export interface User {
 export interface Setting {
   id: string;
   bgmUrl?: string;
+  bgmVolume?: number;
 }
 
 export interface Database {
