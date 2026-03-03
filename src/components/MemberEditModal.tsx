@@ -121,12 +121,12 @@ export default function MemberEditModal({ memberId, onClose }: { memberId: strin
                                 { val: 4, label: '+4' },
                                 { val: 5, label: '+5' }
                               ].map(opt => {
-                                let activeColorClass = "bg-orange-400 text-white shadow-sm scale-105";
-                                if (opt.val <= 0) activeColorClass = "bg-stone-400 text-white shadow-sm scale-105";
-                                else if (opt.val === 1) activeColorClass = "bg-sky-300 text-sky-900 shadow-sm scale-105";
-                                else if (opt.val === 2) activeColorClass = "bg-sky-400 text-white shadow-sm scale-105";
-                                else if (opt.val === 3) activeColorClass = "bg-fuchsia-400 text-white shadow-sm scale-105";
-                                else if (opt.val === 4) activeColorClass = "bg-fuchsia-500 text-white shadow-sm scale-105";
+                                let activeColorClass = "bg-orange-400 text-stone-900 shadow-sm scale-105";
+                                if (opt.val <= 0) activeColorClass = "bg-stone-300 text-stone-900 shadow-sm scale-105";
+                                else if (opt.val === 1) activeColorClass = "bg-blue-300 text-stone-900 shadow-sm scale-105";
+                                else if (opt.val === 2) activeColorClass = "bg-blue-400 text-stone-900 shadow-sm scale-105";
+                                else if (opt.val === 3) activeColorClass = "bg-purple-300 text-stone-900 shadow-sm scale-105";
+                                else if (opt.val === 4) activeColorClass = "bg-purple-400 text-stone-900 shadow-sm scale-105";
 
                                 return (
                                   <button

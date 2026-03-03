@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../store';
-import { ChevronLeft, Edit2, Menu, X, Shield, Swords, ArrowDownNarrowWide, ArrowDownWideNarrow } from 'lucide-react';
+import { ChevronLeft, Edit2, Menu, X, Shield, Swords, ArrowDownNarrowWide, ArrowDownWideNarrow, Search } from 'lucide-react';
 import MemberEditModal from '../components/MemberEditModal';
+import MemberSearchModal from '../components/MemberSearchModal';
 import ConfirmModal from '../components/ConfirmModal';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
@@ -14,6 +15,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
   const { db, setCurrentView, currentUser } = useAppContext();
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [sortConfig, setSortConfig] = useState<{ key: 'member' | string, order: 'asc' | 'desc' }>({ key: 'member', order: 'asc' });
 
@@ -287,11 +289,22 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
             >
               <Menu className="w-5 h-5 text-stone-600" />
             </button>
-            <div className="flex items-baseline gap-3">
-              <h1 className="font-bold text-lg text-stone-800">{guild.name}</h1>
-              <span className={`text-xs font-medium ${members.length > 30 ? 'text-red-500 bg-red-50 px-1.5 py-0.5 rounded' : 'text-stone-500'}`}>
-                {t('dashboard.member_count')}: {members.length} / 30
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-baseline gap-3">
+                <h1 className="font-bold text-lg text-stone-800">{guild.name}</h1>
+                <span className={`text-xs font-medium ${members.length > 30 ? 'text-red-500 bg-red-50 px-1.5 py-0.5 rounded' : 'text-stone-500'}`}>
+                  {t('dashboard.member_count')}: {members.length} / 30
+                </span>
+              </div>
+              {canSeeAllGuilds && (
+                <button
+                  onClick={() => setIsSearchModalOpen(true)}
+                  className="p-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
+                  title={t('dashboard.global_search_member', '全域搜尋成員')}
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </header>
 
@@ -385,14 +398,14 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
                               const hasCostume = record && record.level >= 0;
                               const hasExclusiveWeapon = member.exclusiveWeapons?.[c.characterId] ?? false;
 
-                              let levelColorClass = "bg-orange-400 text-white"; // default for +5
+                              let levelColorClass = "bg-orange-400 text-stone-900"; // default for +5
                               if (hasCostume) {
                                 const level = Number(record.level);
-                                if (level <= 0) levelColorClass = "bg-stone-300 text-stone-700";
-                                else if (level === 1) levelColorClass = "bg-sky-300 text-sky-900";
-                                else if (level === 2) levelColorClass = "bg-sky-400 text-white";
-                                else if (level === 3) levelColorClass = "bg-fuchsia-400 text-white";
-                                else if (level === 4) levelColorClass = "bg-fuchsia-500 text-white";
+                                if (level <= 0) levelColorClass = "bg-stone-300 text-stone-900";
+                                else if (level === 1) levelColorClass = "bg-blue-300 text-stone-900";
+                                else if (level === 2) levelColorClass = "bg-blue-400 text-stone-900";
+                                else if (level === 3) levelColorClass = "bg-purple-300 text-stone-900";
+                                else if (level === 4) levelColorClass = "bg-purple-400 text-stone-900";
                               }
 
                               return (
@@ -446,6 +459,11 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
           onClose={() => setEditingMemberId(null)}
         />
       )}
+
+      <MemberSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+      />
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

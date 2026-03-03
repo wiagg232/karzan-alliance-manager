@@ -106,15 +106,40 @@ export default function Login() {
                         <h3 className={`font-bold text-center py-2 rounded-lg border ${getTierColor(tier)}`}>{t('guilds.tier')} {tier}</h3>
                         {tierGuilds.map(([id, guild]: [string, any]) => {
                           const isDisabled = currentUser && !canSeeAllGuilds && id !== userGuildId;
+                          
+                          // Determine classes based on state and tier
+                          let buttonClasses = "w-full flex items-center justify-between p-4 bg-white border rounded-xl transition-all group disabled:opacity-50";
+                          let textClasses = "font-medium transition-colors";
+                          let iconClasses = "w-5 h-5 transition-colors";
+                          
+                          if (isDisabled) {
+                            buttonClasses += " border-stone-200 opacity-30 grayscale cursor-not-allowed";
+                            textClasses += " text-stone-800";
+                            iconClasses += " text-stone-400";
+                          } else {
+                            // Enabled state - apply tier colors
+                            buttonClasses += ` ${getTierBorderHoverClass(tier)}`;
+                            
+                            // Add specific background hover colors based on tier
+                            if (tier === 1) buttonClasses += " hover:bg-orange-50 border-orange-200";
+                            else if (tier === 2) buttonClasses += " hover:bg-blue-50 border-blue-200";
+                            else if (tier === 3) buttonClasses += " hover:bg-stone-50 border-stone-300";
+                            else if (tier === 4) buttonClasses += " hover:bg-green-50 border-green-200";
+                            else buttonClasses += " hover:bg-stone-50 border-stone-200";
+                            
+                            textClasses += ` ${getTierTextHoverClass(tier)}`;
+                            iconClasses += ` ${getTierTextHoverClass(tier)}`;
+                          }
+
                           return (
                             <button
                               key={id}
                               onClick={() => handleGuildSelect(id, guild.name)}
                               disabled={isVerifying || isDisabled}
-                              className={`w-full flex items-center justify-between p-4 bg-white border border-stone-200 rounded-xl transition-all group ${isDisabled ? 'opacity-30 grayscale cursor-not-allowed' : getTierBorderHoverClass(tier)} disabled:opacity-50`}
+                              className={buttonClasses}
                             >
-                              <span className={`font-medium text-stone-800 transition-colors ${isDisabled ? '' : getTierTextHoverClass(tier)}`}>{guild.name}</span>
-                              <ChevronRight className={`w-5 h-5 text-stone-400 transition-colors ${isDisabled ? '' : getTierTextHoverClass(tier)}`} />
+                              <span className={textClasses}>{guild.name}</span>
+                              <ChevronRight className={iconClasses} />
                             </button>
                           );
                         })}
