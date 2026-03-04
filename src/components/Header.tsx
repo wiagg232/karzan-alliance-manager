@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../store';
-import { Shield, LogOut, Settings, Users, User, Lock, AlertCircle, X, Globe, Volume2, VolumeX } from 'lucide-react';
+import { Shield, LogOut, Settings, Users, LogIn, Lock, AlertCircle, X, Globe, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { supabase } from '../supabase';
@@ -116,6 +116,24 @@ export default function Header() {
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const volumeHoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const volumeContainerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (volumeContainerRef.current && !volumeContainerRef.current.contains(event.target as Node)) {
+        setIsVolumeHovered(false);
+        if (volumeHoverTimeoutRef.current) {
+          clearTimeout(volumeHoverTimeoutRef.current);
+          volumeHoverTimeoutRef.current = null;
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleVolumeMouseEnter = () => {
     if (volumeHoverTimeoutRef.current) {
@@ -217,12 +235,13 @@ export default function Header() {
                 onClick={() => setIsLoginModalOpen(true)}
                 className="flex items-center gap-2 hover:text-amber-400 transition-colors"
               >
-                <User className="w-4 h-4" />
+                <LogIn className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('header.login_btn')}</span>
               </button>
             )}
 
             <div 
+              ref={volumeContainerRef}
               className="flex items-center gap-4 border-l border-stone-800 pl-4"
               onMouseEnter={handleVolumeMouseEnter}
               onMouseLeave={handleVolumeMouseLeave}
