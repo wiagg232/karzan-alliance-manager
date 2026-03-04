@@ -197,6 +197,13 @@
     "save_failed": "Failed to save settings",
     "bgm": "Background Music",
     "bgm_url": "Background Music URL",
-    "bgm_hint": "Please enter the full URL of the background music, supporting common formats like mp3."
+    "bgm_hint": "Please enter the full URL of the background music, supporting common formats like mp3.",
+    "main_page": "Main Page",
+    "guild_percentage_calculation": "Guild Percentage Calculation",
+    "none": "None",
+    "new_costume_ownership_rate": "New Costume Ownership Rate",
+    "message": "Message",
+    "message_placeholder": "Enter message to display on main page...",
+    "bgm_default_volume": "Default BGM Volume"
   }
 }

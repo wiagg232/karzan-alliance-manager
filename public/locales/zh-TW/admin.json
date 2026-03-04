@@ -197,6 +197,13 @@
     "save_failed": "設定儲存失敗",
     "bgm": "背景音樂",
     "bgm_url": "背景音樂 URL",
-    "bgm_hint": "請輸入背景音樂的完整網址，支援 mp3 等常見格式。"
+    "bgm_hint": "請輸入背景音樂的完整網址，支援 mp3 等常見格式。",
+    "main_page": "主頁面",
+    "guild_percentage_calculation": "公會百分比計算",
+    "none": "沒有",
+    "new_costume_ownership_rate": "新服裝持有率",
+    "message": "訊息",
+    "message_placeholder": "輸入顯示在主頁面的訊息...",
+    "bgm_default_volume": "背景音樂預設音量"
   }
 }

@@ -1645,30 +1645,30 @@ function SettingsManager() {
       </div>
 
       <div className="bg-stone-50 dark:bg-stone-700 p-6 rounded-2xl border border-stone-200 dark:border-stone-600">
-        <h3 className="text-lg font-bold text-stone-800 dark:text-stone-200 mb-4">主頁面</h3>
+        <h3 className="text-lg font-bold text-stone-800 dark:text-stone-200 mb-4">{t('settings.main_page')}</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-stone-600 dark:text-stone-400 mb-1">
-              公會百分比計算
+              {t('settings.guild_percentage_calculation')}
             </label>
             <select
               value={indexPercentType}
               onChange={(e) => setIndexPercentType(e.target.value as 'empty' | 'new_costumes_owned')}
               className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none dark:bg-stone-700 dark:text-stone-100"
             >
-              <option value="empty">沒有</option>
-              <option value="new_costumes_owned">新服裝持有率</option>
+              <option value="empty">{t('settings.none')}</option>
+              <option value="new_costumes_owned">{t('settings.new_costume_ownership_rate')}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-stone-600 dark:text-stone-400 mb-1">
-              訊息
+              {t('settings.message')}
             </label>
             <textarea
               value={indexMessage}
               onChange={(e) => setIndexMessage(e.target.value)}
-              placeholder="輸入顯示在主頁面的訊息..."
+              placeholder={t('settings.message_placeholder')}
               className="w-full p-3 border border-stone-300 dark:border-stone-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none dark:bg-stone-700 dark:text-stone-100 min-h-[100px]"
             />
           </div>
