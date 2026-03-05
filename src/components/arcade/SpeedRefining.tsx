@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../supabase';
-import { Trophy, Timer, AlertTriangle, RotateCcw, Play, Medal, ArrowLeft } from 'lucide-react';
+import { Trophy, Timer, AlertTriangle, RotateCcw, Play, Medal, ArrowLeft, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 // Types
@@ -191,7 +191,7 @@ export default function SpeedRefining() {
     // Save to DB
     const insertData = { 
       player_name: playerName, 
-      total_time: parseFloat((finalTime).toFixed(2)) 
+      total_time: parseFloat((finalTime).toFixed(3)) 
     };
     console.log('Attempting to save score:', insertData);
 
@@ -211,7 +211,7 @@ export default function SpeedRefining() {
   };
 
   // Render Helpers
-  const formatTime = (time: number) => time.toFixed(2);
+  const formatTime = (time: number) => time.toFixed(3);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[600px] w-full bg-stone-900 text-stone-100 p-4 rounded-xl font-mono relative overflow-hidden">
@@ -225,7 +225,7 @@ export default function SpeedRefining() {
           {gameState === 'playing' && (
             <div className="text-xl mt-2 font-mono">
               <span className="text-stone-400">{t('speedRefining.time')}: </span>
-              <span className="text-white">{(currentTime + penaltyTime).toFixed(2)}s</span>
+              <span className="text-white">{(currentTime + penaltyTime).toFixed(3)}s</span>
               {penaltyTime > 0 && (
                 <span className="text-red-500 text-sm ml-2 animate-pulse">
                   (+{penaltyTime.toFixed(1)}s)
@@ -265,15 +265,30 @@ export default function SpeedRefining() {
 
           <button
             onClick={startGame}
-            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-lg shadow-amber-900/20"
+            className="flex items-center gap-1 bg-stone-300 hover:bg-stone-400 text-stone-900 px-8 py-3 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-lg shadow-black/20"
           >
-            <Play className="w-5 h-5" /> {t('speedRefining.start')}
+            <span>{t('speedRefining.start_prefix')}</span>
+            <img 
+              src="https://bybjhpiusfnjlbhiesrp.supabase.co/storage/v1/object/public/arcade/refinepowder.webp" 
+              alt="powder" 
+              className="w-9 h-9 object-contain"
+              referrerPolicy="no-referrer"
+            />
+            <span>{t('speedRefining.start_suffix')}</span>
           </button>
         </div>
       )}
 
       {gameState === 'playing' && (
-        <div className={`grid grid-cols-5 gap-2 md:gap-3 p-4 bg-stone-800 rounded-xl border-2 border-stone-700 shadow-2xl ${shake ? 'animate-shake' : ''}`}>
+        <div className="relative">
+          <button
+            onClick={() => setGameState('start')}
+            className="absolute -top-12 -right-4 p-2 text-stone-400 hover:text-white transition-colors"
+            title={t('speedRefining.back')}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className={`grid grid-cols-5 gap-2 md:gap-3 p-4 bg-stone-800 rounded-xl border-2 border-stone-700 shadow-2xl ${shake ? 'animate-shake' : ''}`}>
           {gridNumbers.map((num) => {
             const isClicked = num < nextNumber;
             const isNext = num === nextNumber;
@@ -297,6 +312,7 @@ export default function SpeedRefining() {
               </button>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -310,11 +326,11 @@ export default function SpeedRefining() {
           <div className="grid grid-cols-3 gap-4 w-full">
             <div className="bg-stone-800 p-3 rounded-lg text-center border border-stone-700">
               <div className="text-xs text-stone-500 uppercase">{t('speedRefining.totalTime')}</div>
-              <div className="text-xl font-bold text-amber-400">{(currentTime + penaltyTime).toFixed(2)}s</div>
+              <div className="text-xl font-bold text-amber-400">{(currentTime + penaltyTime).toFixed(3)}s</div>
             </div>
             <div className="bg-stone-800 p-3 rounded-lg text-center border border-stone-700">
               <div className="text-xs text-stone-500 uppercase">{t('speedRefining.playTime')}</div>
-              <div className="text-xl font-bold text-white">{currentTime.toFixed(2)}s</div>
+              <div className="text-xl font-bold text-white">{currentTime.toFixed(3)}s</div>
             </div>
             <div className="bg-stone-800 p-3 rounded-lg text-center border border-stone-700">
               <div className="text-xs text-stone-500 uppercase">{t('speedRefining.penalty')}</div>
@@ -372,16 +388,22 @@ export default function SpeedRefining() {
                   className={`flex justify-between items-center p-2 rounded ${idx === 0 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-stone-900/30'}`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
-                      idx === 0 ? 'bg-amber-500 text-stone-900' : 
-                      idx === 1 ? 'bg-stone-300 text-stone-900' : 
-                      idx === 2 ? 'bg-amber-700 text-stone-100' : 'bg-stone-700 text-stone-300'
-                    }`}>
-                      {idx + 1}
-                    </span>
+                    {idx < 3 ? (
+                      <div className={`w-7 h-7 flex items-center justify-center rounded-full shadow-inner ${
+                        idx === 0 ? 'bg-amber-500 text-stone-900' : 
+                        idx === 1 ? 'bg-stone-300 text-stone-900' : 
+                        'bg-amber-700 text-stone-100'
+                      }`}>
+                        <Trophy className="w-4 h-4" />
+                      </div>
+                    ) : (
+                      <span className="w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold bg-stone-700 text-stone-300">
+                        {idx + 1}
+                      </span>
+                    )}
                     <span className="text-stone-200 font-medium">{entry.player_name}</span>
                   </div>
-                  <span className="text-amber-400 font-mono font-bold">{entry.total_time.toFixed(2)}s</span>
+                  <span className="text-amber-400 font-mono font-bold">{entry.total_time.toFixed(3)}s</span>
                 </div>
               ))
             ) : (

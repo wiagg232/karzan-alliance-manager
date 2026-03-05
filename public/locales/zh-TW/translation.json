@@ -230,6 +230,7 @@
     "system_title": "Kazran 聯盟系統",
     "costume_list": "服裝列表",
     "admin_settings": "後台設定",
+    "arcade": "街機遊戲",
     "logout": "登出({{user}})",
     "login_btn": "登入"
   },

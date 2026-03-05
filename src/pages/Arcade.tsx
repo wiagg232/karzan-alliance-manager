@@ -18,7 +18,7 @@ export default function Arcade() {
             className="flex items-center gap-2 text-stone-400 hover:text-white mb-6 transition-colors self-start"
           >
             <ArrowLeft className="w-5 h-5" />
-            {t('back_to_arcade', 'Back to Arcade')}
+            {t('back_to_arcade', 'Back to Arcade Games')}
           </button>
           <SpeedRefining />
         </div>
@@ -38,7 +38,7 @@ export default function Arcade() {
 
       <h1 className="text-2xl font-bold text-stone-800 dark:text-stone-100 mb-6 flex items-center gap-2">
         <Trophy className="w-8 h-8 text-amber-500" />
-        {t('title', 'Arcade Center')}
+        {t('title', 'Arcade Games')}
       </h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
