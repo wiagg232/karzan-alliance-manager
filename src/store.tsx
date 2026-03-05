@@ -95,19 +95,39 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useTranslation();
-  const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  const SESSION_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
 
   const [db, setDbState] = useState<Database>(defaultData);
-  const [currentView, setCurrentView] = useState<ViewState>(null);
+  const [currentView, setCurrentViewState] = useState<ViewState>(() => {
+    const saved = localStorage.getItem('currentView');
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const setCurrentView = (view: React.SetStateAction<ViewState>) => {
+    setCurrentViewState(prev => {
+      const next = typeof view === 'function' ? (view as any)(prev) : view;
+      if (next) {
+        localStorage.setItem('currentView', JSON.stringify(next));
+      } else {
+        localStorage.removeItem('currentView');
+      }
+      return next;
+    });
+  };
+
   const [currentUser, setCurrentUserState] = useState<string | null>(() => {
-    const user = sessionStorage.getItem('currentUser');
-    const loginTime = sessionStorage.getItem('loginTimestamp');
+    const user = localStorage.getItem('currentUser');
+    const loginTime = localStorage.getItem('loginTimestamp');
 
     if (user && loginTime) {
       const now = Date.now();
       if (now - parseInt(loginTime, 10) > SESSION_TIMEOUT) {
-        sessionStorage.removeItem('currentUser');
-        sessionStorage.removeItem('loginTimestamp');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('loginTimestamp');
         return null;
       }
       return user;
@@ -121,11 +141,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setCurrentUser = (user: string | null) => {
     setCurrentUserState(user);
     if (user) {
-      sessionStorage.setItem('currentUser', user);
-      sessionStorage.setItem('loginTimestamp', Date.now().toString());
+      localStorage.setItem('currentUser', user);
+      localStorage.setItem('loginTimestamp', Date.now().toString());
     } else {
-      sessionStorage.removeItem('currentUser');
-      sessionStorage.removeItem('loginTimestamp');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('loginTimestamp');
     }
   };
 
@@ -175,7 +195,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const checkSession = () => {
       if (currentUser) {
-        const loginTime = sessionStorage.getItem('loginTimestamp');
+        const loginTime = localStorage.getItem('loginTimestamp');
         if (loginTime) {
           const now = Date.now();
           if (now - parseInt(loginTime, 10) > SESSION_TIMEOUT) {
