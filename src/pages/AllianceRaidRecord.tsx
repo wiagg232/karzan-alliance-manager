@@ -34,6 +34,7 @@ export default function AllianceRaidRecord() {
 
   // Modals state
   const [isSeasonModalOpen, setIsSeasonModalOpen] = useState(false);
+  const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null);
   const [newSeason, setNewSeason] = useState({ season_number: 1, period_text: '', description: '' });
 
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
@@ -94,23 +95,35 @@ export default function AllianceRaidRecord() {
     }
   }, [seasons]);
 
-  const handleAddSeason = async (e: React.FormEvent) => {
+  const handleSaveSeason = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { data, error } = await supabase
-        .from('raid_seasons')
-        .insert([newSeason])
-        .select();
+      if (editingSeasonId) {
+        const { error } = await supabase
+          .from('raid_seasons')
+          .update(newSeason)
+          .eq('id', editingSeasonId);
 
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        setSeasons(prev => [data[0], ...prev].sort((a, b) => b.season_number - a.season_number));
+        if (error) throw error;
+        
+        setSeasons(prev => prev.map(s => s.id === editingSeasonId ? { ...s, ...newSeason } : s).sort((a, b) => b.season_number - a.season_number));
+      } else {
+        const { data, error } = await supabase
+          .from('raid_seasons')
+          .insert([newSeason])
+          .select();
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setSeasons(prev => [data[0], ...prev].sort((a, b) => b.season_number - a.season_number));
+        }
       }
       setIsSeasonModalOpen(false);
+      setEditingSeasonId(null);
       setNewSeason({ season_number: (seasons[0]?.season_number || 0) + 1, period_text: '', description: '' });
     } catch (err: any) {
-      alert(`Error adding season: ${err.message}`);
+      alert(`Error saving season: ${err.message}`);
     }
   };
 
@@ -286,6 +299,7 @@ export default function AllianceRaidRecord() {
             {canManage && (
               <button
                 onClick={() => {
+                  setEditingSeasonId(null);
                   setNewSeason({ season_number: (seasons[0]?.season_number || 0) + 1, period_text: '', description: '' });
                   setIsSeasonModalOpen(true);
                 }}
@@ -330,7 +344,7 @@ export default function AllianceRaidRecord() {
                       {/* 移除 "公會名稱" */}
                     </th>
                     {seasons.map(season => (
-                      <th key={season.id} className="p-2 border-b border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 w-[110px] min-w-[110px] max-w-[110px] align-top">
+                      <th key={season.id} className="p-2 border-b border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 w-[110px] min-w-[110px] max-w-[110px] align-top relative group">
                         <div className="flex flex-col gap-0.5">
                           <div className="font-bold text-stone-800 dark:text-stone-200 text-xs leading-tight">
                             S{season.season_number}
@@ -342,6 +356,18 @@ export default function AllianceRaidRecord() {
                             {season.description}
                           </div>
                         </div>
+                        {canManage && (
+                          <button
+                            onClick={() => {
+                              setEditingSeasonId(season.id);
+                              setNewSeason({ season_number: season.season_number, period_text: season.period_text, description: season.description });
+                              setIsSeasonModalOpen(true);
+                            }}
+                            className="absolute top-1 right-1 p-1 text-stone-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -442,7 +468,7 @@ export default function AllianceRaidRecord() {
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b border-stone-200 dark:border-stone-700">
-              <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100">新增賽季</h3>
+              <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100">{editingSeasonId ? '編輯賽季' : '新增賽季'}</h3>
               <button
                 onClick={() => setIsSeasonModalOpen(false)}
                 className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
@@ -451,10 +477,10 @@ export default function AllianceRaidRecord() {
               </button>
             </div>
             
-            <form onSubmit={handleAddSeason} className="p-4 space-y-4">
+            <form onSubmit={handleSaveSeason} className="p-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  賽季編號 (Season Number)
+                  賽季編號
                 </label>
                 <input
                   type="number"
@@ -468,7 +494,7 @@ export default function AllianceRaidRecord() {
               
               <div>
                 <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  時間字串 (例如：2026年3月)
+                  時間
                 </label>
                 <input
                   type="text"
@@ -482,7 +508,7 @@ export default function AllianceRaidRecord() {
               
               <div>
                 <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  小說明 (例如：15T,超殺局)
+                  說明
                 </label>
                 <input
                   type="text"
@@ -505,7 +531,7 @@ export default function AllianceRaidRecord() {
                   type="submit"
                   className="px-4 py-2 bg-stone-800 dark:bg-stone-600 text-white rounded-lg hover:bg-stone-700 dark:hover:bg-stone-500 transition-colors"
                 >
-                  新增
+                  {editingSeasonId ? '儲存' : '新增'}
                 </button>
               </div>
             </form>
