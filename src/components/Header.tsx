@@ -3,6 +3,7 @@ import { useAppContext } from '../store';
 import { Shield, LogIn, LogOut, Settings, Users, User, Lock, AlertCircle, X, Globe, Volume2, VolumeX, Sun, Moon, Monitor, Layout, Mail, Gamepad2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../ThemeContext';
+import { logEvent } from '../analytics';
 
 import { supabase } from '../supabase';
 
@@ -153,6 +154,7 @@ export default function Header() {
   };
 
   const handleLogout = async () => {
+    logEvent('User', 'Logout', currentUser || 'unknown');
     await supabase.auth.signOut();
     setCurrentUser(null);
     setCurrentView(null);
@@ -204,7 +206,12 @@ export default function Header() {
           </h1>
           <div className="flex items-center gap-6 text-sm font-medium">
             <button
-              onClick={() => topGuildId && setCurrentView({ type: 'guild', guildId: topGuildId })}
+              onClick={() => {
+                if (topGuildId) {
+                  logEvent('Navigation', 'Click', 'Costume List');
+                  setCurrentView({ type: 'guild', guildId: topGuildId });
+                }
+              }}
               disabled={isCostumeListActive || !topGuildId}
               className={`flex items-center gap-2 transition-colors ${isCostumeListActive ? 'text-amber-500 cursor-default' : 'hover:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed'}`}
             >
@@ -214,7 +221,10 @@ export default function Header() {
 
             {currentUser && (
               <button
-                onClick={() => setCurrentView({ type: 'application_mailbox' })}
+                onClick={() => {
+                  logEvent('Navigation', 'Click', 'Application Mailbox');
+                  setCurrentView({ type: 'application_mailbox' });
+                }}
                 disabled={currentView?.type === 'application_mailbox'}
                 className={`flex items-center gap-2 transition-colors ${currentView?.type === 'application_mailbox' ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
               >
@@ -225,7 +235,10 @@ export default function Header() {
 
             {canSeeAllGuilds && (
               <button
-                onClick={() => setCurrentView({ type: 'arcade' })}
+                onClick={() => {
+                  logEvent('Navigation', 'Click', 'Arcade');
+                  setCurrentView({ type: 'arcade' });
+                }}
                 disabled={currentView?.type === 'arcade'}
                 className={`flex items-center gap-2 transition-colors ${currentView?.type === 'arcade' ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
               >
@@ -238,7 +251,10 @@ export default function Header() {
               <div className="flex items-center gap-6">
                 {canAccessAdmin && (
                   <button
-                    onClick={() => setCurrentView({ type: 'admin' })}
+                    onClick={() => {
+                      logEvent('Navigation', 'Click', 'Admin Settings');
+                      setCurrentView({ type: 'admin' });
+                    }}
                     disabled={isAdminActive}
                     className={`flex items-center gap-2 transition-colors ${isAdminActive ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
                   >

@@ -12,6 +12,7 @@ import BulkPasswordUpdate from '../components/BulkPasswordUpdate';
 import ArchivedMembersManager from '../components/ArchivedMembersManager';
 import { Reorder } from "motion/react";
 import { useTranslation } from 'react-i18next';
+import { logEvent } from '../analytics';
 
 export default function AdminDashboard() {
   const { t } = useTranslation(['admin', 'translation']);
@@ -23,6 +24,11 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     setCurrentUser(null);
     setCurrentView(null);
+  };
+
+  const handleTabChange = (tab: 'guilds' | 'costumes' | 'backup' | 'tools' | 'passwords' | 'archived' | 'settings') => {
+    logEvent('AdminDashboard', 'Switch Tab', tab);
+    setActiveTab(tab);
   };
 
   return (
@@ -38,15 +44,15 @@ export default function AdminDashboard() {
           <span>{t('common.user')}: {Object.keys(db.users).length}</span>
         </div>
         <div className="flex gap-4 mb-6 border-b border-stone-300 dark:border-stone-700 pb-2 overflow-x-auto">
-          <TabButton active={activeTab === 'guilds'} onClick={() => setActiveTab('guilds')} icon={<Shield />} label={t('nav.guild_management')} />
-          <TabButton active={activeTab === 'costumes'} onClick={() => setActiveTab('costumes')} icon={<Sword />} label={t('nav.costume_database')} />
-          <TabButton active={activeTab === 'archived'} onClick={() => setActiveTab('archived')} icon={<Archive />} label={t('nav.archived_members')} />
+          <TabButton active={activeTab === 'guilds'} onClick={() => handleTabChange('guilds')} icon={<Shield />} label={t('nav.guild_management')} />
+          <TabButton active={activeTab === 'costumes'} onClick={() => handleTabChange('costumes')} icon={<Sword />} label={t('nav.costume_database')} />
+          <TabButton active={activeTab === 'archived'} onClick={() => handleTabChange('archived')} icon={<Archive />} label={t('nav.archived_members')} />
           {userRole !== 'manager' && (
             <>
-              <TabButton active={activeTab === 'passwords'} onClick={() => setActiveTab('passwords')} icon={<Key />} label={t('nav.change_password')} />
-              <TabButton active={activeTab === 'backup'} onClick={() => setActiveTab('backup')} icon={<Save />} label={t('nav.backup_restore')} />
-              <TabButton active={activeTab === 'tools'} onClick={() => setActiveTab('tools')} icon={<Wand2 />} label={t('nav.tools')} />
-              <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<Settings />} label={t('nav.settings')} />
+              <TabButton active={activeTab === 'passwords'} onClick={() => handleTabChange('passwords')} icon={<Key />} label={t('nav.change_password')} />
+              <TabButton active={activeTab === 'backup'} onClick={() => handleTabChange('backup')} icon={<Save />} label={t('nav.backup_restore')} />
+              <TabButton active={activeTab === 'tools'} onClick={() => handleTabChange('tools')} icon={<Wand2 />} label={t('nav.tools')} />
+              <TabButton active={activeTab === 'settings'} onClick={() => handleTabChange('settings')} icon={<Settings />} label={t('nav.settings')} />
             </>
           )}
         </div>

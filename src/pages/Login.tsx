@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import { supabase } from '../supabase';
+import { logEvent } from '../analytics';
 
 const DOMAIN_SUFFIX = '@kazran.com';
 
@@ -63,6 +64,8 @@ export default function Login() {
       if (authError) {
         throw new Error(t('login.wrong_password'));
       }
+
+      logEvent('User', 'Login', username.toLowerCase());
 
       setCurrentUser(username.toLowerCase());
       await fetchAllMembers();

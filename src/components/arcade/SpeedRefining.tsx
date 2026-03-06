@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { Trophy, Timer, AlertTriangle, RotateCcw, Play, Medal, ArrowLeft, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { logEvent } from '../../analytics';
 
 // Types
 interface LeaderboardEntry {
@@ -139,6 +140,8 @@ export default function SpeedRefining() {
     setShowNameError(false);
     localStorage.setItem('speed_refining_player_name', playerName);
     
+    logEvent('Arcade', 'Start SpeedRefining', playerName);
+
     // Shuffle numbers
     const nums = Array.from({ length: TOTAL_NUMBERS }, (_, i) => i);
     for (let i = nums.length - 1; i > 0; i--) {

@@ -12,6 +12,7 @@ import GuildDashboard from './pages/GuildDashboard';
 import ApplicationMailbox from './pages/ApplicationMailbox';
 import Arcade from './pages/Arcade';
 import ToastContainer from './components/Toast';
+import { initGA, logPageView } from './analytics';
 
 const AppContent = () => {
   const { db, currentView, currentUser, setCurrentView } = useAppContext();
@@ -20,6 +21,24 @@ const AppContent = () => {
   const canAccessAdmin = userRole === 'admin' || userRole === 'creator';
   const canAccessArcade = userRole === 'admin' || userRole === 'creator' || userRole === 'manager';
   const canAccessMailbox = !!currentUser;
+
+  React.useEffect(() => {
+    let path = '/login';
+    if (currentUser) {
+      if (!currentView) {
+        path = '/';
+      } else if (currentView.type === 'admin') {
+        path = '/admin';
+      } else if (currentView.type === 'application_mailbox') {
+        path = '/mailbox';
+      } else if (currentView.type === 'arcade') {
+        path = '/arcade';
+      } else if (currentView.type === 'guild') {
+        path = `/guild/${currentView.guildId}`;
+      }
+    }
+    logPageView(path);
+  }, [currentView, currentUser]);
 
   React.useEffect(() => {
     if (currentView?.type === 'admin' && !canAccessAdmin) {
@@ -134,6 +153,10 @@ const AppContentWrapper = () => {
 };
 
 export default function App() {
+  React.useEffect(() => {
+    initGA();
+  }, []);
+
   return (
     <ThemeProvider>
       <AppProvider>

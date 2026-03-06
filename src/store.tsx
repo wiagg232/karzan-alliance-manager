@@ -91,6 +91,8 @@ interface AppContextType {
   isMembersLoading: boolean;
 }
 
+import { setUserId } from './analytics';
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -140,6 +142,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setCurrentUser = (user: string | null) => {
     setCurrentUserState(user);
+    setUserId(user);
     if (user) {
       localStorage.setItem('currentUser', user);
       localStorage.setItem('loginTimestamp', Date.now().toString());

@@ -9,6 +9,7 @@ import Header from '../components/Header';
 import { Role } from '../types';
 import { getTierTextColorDark, getTierHighlightClass, getTierHoverClass, truncateName, getImageUrl } from '../utils';
 import { useTranslation } from 'react-i18next';
+import { logEvent } from '../analytics';
 
 export default function GuildDashboard({ guildId }: { guildId: string }) {
   const { t, i18n } = useTranslation();
@@ -24,6 +25,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
   }, [guildId]);
 
   const handleSort = (key: string) => {
+    logEvent('GuildDashboard', 'Sort', key);
     setSortConfig(prev => {
       if (prev.key === key) {
         return { key, order: prev.order === 'asc' ? 'desc' : 'asc' };
@@ -64,6 +66,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
   const closeConfirmModal = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
 
   const handleEditClick = (id: string, memberName: string) => {
+    logEvent('GuildDashboard', 'Edit Member', memberName);
     setConfirmModal({
       isOpen: true,
       title: t('dashboard.identity_confirm'),
