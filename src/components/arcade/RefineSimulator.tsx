@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Part, Weapon, WEAPONS } from './assets/RefineSimulatorEquipments.ts';
+import { logEvent } from '../../analytics';
 
 // --- Types & Constants ---
 type Grade = 'C' | 'B' | 'A' | 'S';
@@ -143,6 +144,7 @@ export default function RefineSimulator() {
 
     // --- Handlers ---
     const startSimulation = async () => {
+        logEvent('Arcade', 'Start Refining', selectedWeapon.name);
         setIsRunning(true);
         const startTotal = total;
         const startSimCount = simulatedCount;

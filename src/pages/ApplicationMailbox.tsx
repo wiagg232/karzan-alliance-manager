@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../store';
 import { useTranslation } from 'react-i18next';
+import { logEvent } from '../analytics';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { 
@@ -114,6 +115,7 @@ export default function ApplicationMailbox() {
 
     try {
       await addApplyMail(formData.subject, formData.content);
+      logEvent('Mailbox', 'Submit Application', formData.subject);
       localStorage.setItem('last_application_submit_time', Date.now().toString());
       setIsModalOpen(false);
       setFormData({ subject: 'leave', content: '' });
@@ -126,6 +128,7 @@ export default function ApplicationMailbox() {
   const handleStatusUpdate = async (id: string, newStatus: ApplicationStatus) => {
     try {
       await updateApplyMail(id, { status: newStatus });
+      logEvent('Mailbox', 'Update Status', newStatus);
       showToast(t('mailbox:update_success', '更新成功'), 'success');
     } catch (err) {
       showToast(t('mailbox:update_failed', '更新失敗'), 'error');
@@ -142,6 +145,7 @@ export default function ApplicationMailbox() {
     if (!itemToDelete) return;
     try {
       await deleteApplyMail(itemToDelete);
+      logEvent('Mailbox', 'Delete Application', itemToDelete);
       showToast(t('mailbox:delete_success', '刪除成功'), 'success');
       setDeleteModalOpen(false);
       setItemToDelete(null);
