@@ -12,6 +12,7 @@ const GuildDashboard = React.lazy(() => import('./pages/GuildDashboard'));
 const ApplicationMailbox = React.lazy(() => import('./pages/ApplicationMailbox'));
 const Arcade = React.lazy(() => import('./pages/Arcade'));
 const AllianceRaidRecord = React.lazy(() => import('./pages/AllianceRaidRecord'));
+const Toolbox = React.lazy(() => import('./pages/Toolbox'));
 const MemberBoard = React.lazy(() => import('./pages/TeamManagementPage'));
 import ToastContainer from './components/Toast';
 import { initGA, logPageView } from './analytics';
@@ -29,6 +30,7 @@ const AppContent = () => {
       case 'arcade': return ['manager', 'admin', 'creator'];
       case 'alliance_raid_record': return ['creator'];
       case 'member_board': return ['manager', 'admin', 'creator'];
+      case 'toolbox': return ['member', 'manager', 'admin', 'creator'];
       default: return ['creator', 'admin'];
     }
   };
@@ -44,6 +46,7 @@ const AppContent = () => {
   const canAccessAllianceRaidRecord = canAccessPage('alliance_raid_record');
   const canAccessCostumeList = canAccessPage('costume_list');
   const canAccessMemberBoard = canAccessPage('member_board');
+  const canAccessToolbox = canAccessPage('toolbox');
 
   React.useEffect(() => {
     let path = '/login';
@@ -58,6 +61,8 @@ const AppContent = () => {
         path = '/arcade';
       } else if (currentView.type === 'alliance_raid_record') {
         path = '/alliance_raid_record';
+      } else if (currentView.type === 'toolbox') {
+        path = '/toolbox';
       } else if (currentView.type === 'guild') {
         path = `/guild/${currentView.guildId}`;
       } else if (currentView.type === 'member_board') {
@@ -80,13 +85,16 @@ const AppContent = () => {
     if (currentView?.type === 'alliance_raid_record' && !canAccessAllianceRaidRecord) {
       setCurrentView(null);
     }
+    if (currentView?.type === 'toolbox' && !canAccessToolbox) {
+      setCurrentView(null);
+    }
     if (currentView?.type === 'guild' && !canAccessCostumeList) {
       setCurrentView(null);
     }
     if (currentView?.type === 'member_board' && !canAccessMemberBoard) {
       setCurrentView(null);
     }
-  }, [currentView, canAccessAdmin, canAccessMailbox, canAccessArcade, canAccessAllianceRaidRecord, canAccessCostumeList, canAccessMemberBoard, setCurrentView]);
+  }, [currentView, canAccessAdmin, canAccessMailbox, canAccessArcade, canAccessAllianceRaidRecord, canAccessCostumeList, canAccessMemberBoard, canAccessToolbox, setCurrentView]);
 
   if (!currentView || !currentUser) {
     return <Login />;
@@ -106,6 +114,10 @@ const AppContent = () => {
 
   if (currentView.type === 'alliance_raid_record') {
     return canAccessAllianceRaidRecord ? <AllianceRaidRecord /> : <Login />;
+  }
+
+  if (currentView.type === 'toolbox') {
+    return canAccessToolbox ? <Toolbox /> : <Login />;
   }
 
   if (currentView.type === 'member_board') {

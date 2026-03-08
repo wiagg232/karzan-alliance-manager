@@ -26,6 +26,7 @@ type ViewState = { type: 'admin' } |
 { type: 'application_mailbox' } |
 { type: 'arcade' } |
 { type: 'alliance_raid_record' } |
+{ type: 'toolbox' } |
 { type: 'member_board' } |
   null;
 
