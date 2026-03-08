@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Search, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '@/store';
 import { Member } from '@/entities/member/types';
 
@@ -11,6 +12,7 @@ interface MemberSearchModalProps {
 
 export default function MemberSearchModal({ isOpen, onClose }: MemberSearchModalProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { searchMembers, db, setCurrentView } = useAppContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -47,7 +49,7 @@ export default function MemberSearchModal({ isOpen, onClose }: MemberSearchModal
   };
 
   const handleGoToGuild = (guildId: string) => {
-    setCurrentView({ type: 'guild', guildId });
+    navigate(`/guild/${guildId}`);
     onClose();
   };
 

@@ -5,8 +5,6 @@ import { Role, Costume, Character } from '@/entities/member/types';
 import { getTierColor, getTierBorderHoverClass, getImageUrl } from '@/shared/lib/utils';
 import ConfirmModal from '@shared/ui/ConfirmModal';
 import InputModal from '@shared/ui/InputModal';
-import Footer from '@shared/ui/Footer';
-import Header from '@shared/ui/Header';
 import SinglePasswordUpdate from '../components/SinglePasswordUpdate';
 import BulkPasswordUpdate from '../components/BulkPasswordUpdate';
 import ArchivedMembersManager from '../components/ArchivedMembersManager';
@@ -30,8 +28,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex flex-col">
-      <Header />
-
       <main className="max-w-6xl mx-auto p-6 flex-1 w-full">
         <div className="mb-4 flex gap-4 text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-widest">
           <span>{t('common.guild')}: {Object.keys(db.guilds).length}</span>
@@ -98,7 +94,6 @@ export default function AdminDashboard() {
           {activeTab === 'settings' && userRole !== 'manager' && <SettingsManager />}
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

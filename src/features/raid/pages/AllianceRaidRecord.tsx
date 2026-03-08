@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
-import Header from '@/shared/ui/Header';
-import Footer from '@/shared/ui/Footer';
 import { Trophy, Plus, Edit2, Save, X, AlertCircle, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getTierColor } from '@/shared/lib/utils';
@@ -272,8 +270,6 @@ export default function AllianceRaidRecord() {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex flex-col">
-      <Header />
-
       <main className="max-w-7xl mx-auto p-4 sm:p-6 flex-1 w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-3">
@@ -761,7 +757,6 @@ export default function AllianceRaidRecord() {
         </div>
       </div>
 
-      <Footer />
     </div>
   );
 }

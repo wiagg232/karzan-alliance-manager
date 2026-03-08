@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Gamepad2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '@/store';
 import SpeedRefining from '../components/SpeedRefining';
 import RefineSimulator from '../components/RefineSimulator';
 
 export default function Arcade() {
   const { t } = useTranslation('arcade');
+  const navigate = useNavigate();
   const { setCurrentView } = useAppContext();
   const [activeGame, setActiveGame] = useState<string | null>(null);
 
@@ -50,7 +52,7 @@ export default function Arcade() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <button
-        onClick={() => setCurrentView(null)}
+        onClick={() => navigate('/')}
         className="flex items-center gap-2 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 mb-6 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />

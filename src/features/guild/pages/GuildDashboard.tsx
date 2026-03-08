@@ -1,17 +1,17 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '@/store';
 import { Menu, X, Shield, Swords, ArrowDownNarrowWide, ArrowDownWideNarrow, Search } from 'lucide-react';
 import MemberEditModal from '../components/MemberEditModal';
 import MemberSearchModal from '../components/MemberSearchModal';
 import ConfirmModal from '@shared/ui/ConfirmModal';
-import Footer from '@shared/ui/Footer';
-import Header from '@shared/ui/Header';
 import { getTierTextColorDark, getTierHighlightClass, getTierHoverClass, truncateName, getImageUrl } from '@/shared/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { logEvent } from '@/analytics';
 
 export default function GuildDashboard({ guildId }: { guildId: string }) {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { db, setCurrentView, currentUser, isMembersLoading } = useAppContext();
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -87,21 +87,19 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
   if (currentUser && !canSeeAllGuilds && guildId !== userGuildId) {
     return (
       <div className="h-screen flex flex-col">
-        <Header />
         <div className="flex-1 flex items-center justify-center bg-stone-100 dark:bg-stone-900">
           <div className="text-center p-8 bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 max-w-md">
             <Shield className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-stone-800 dark:text-stone-200 mb-2">{t('errors.permission')}</h2>
             <p className="text-stone-500 dark:text-stone-400 mb-6">{t('dashboard.no_permission')}</p>
             <button
-              onClick={() => userGuildId && setCurrentView({ type: 'guild', guildId: userGuildId })}
+              onClick={() => userGuildId && navigate(`/guild/${userGuildId}`)}
               className="px-6 py-2 bg-stone-800 dark:bg-stone-600 text-white rounded-lg hover:bg-stone-700 dark:hover:bg-stone-500 transition-colors"
             >
               {t('dashboard.return_to_guild')}
             </button>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -206,21 +204,19 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
   if (!guild) {
     return (
       <div className="h-screen flex flex-col">
-        <Header />
         <div className="flex-1 flex items-center justify-center bg-stone-100 dark:bg-stone-900">
           <div className="text-center p-8 bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 max-w-md">
             <Shield className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-stone-800 dark:text-stone-200 mb-2">{t('errors.guild_not_found')}</h2>
             <p className="text-stone-500 dark:text-stone-400 mb-6">{t('dashboard.guild_not_found_desc', '該公會不存在或已被刪除。')}</p>
             <button
-              onClick={() => setCurrentView(null)}
+              onClick={() => navigate('/')}
               className="px-6 py-2 bg-stone-800 dark:bg-stone-600 text-white rounded-lg hover:bg-stone-700 dark:hover:bg-stone-500 transition-colors"
             >
               {t('dashboard.return_to_list', '返回公會列表')}
             </button>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -251,7 +247,6 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
 
   return (
     <div className="h-screen bg-stone-100 dark:bg-stone-900 flex flex-col overflow-hidden">
-      <Header />
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar Overlay */}
         {isSidebarOpen && (
@@ -289,7 +284,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
                         <li key={id}>
                           <button
                             onClick={() => {
-                              setCurrentView({ type: 'guild', guildId: id });
+                              navigate(`/guild/${id}`);
                               setIsSidebarOpen(false);
                             }}
                             className={`w-full text-left px-4 py-2 rounded-lg transition-colors flex justify-between items-center ${id === guildId
@@ -482,7 +477,6 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
                   </div>
                 </div>
               </div>
-              <Footer />
             </div>
           </main>
         </div>

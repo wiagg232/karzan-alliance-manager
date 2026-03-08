@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '@/store';
 import { Shield, Users, ChevronRight, Lock, X, AlertCircle, Info } from 'lucide-react';
 import { getTierColor, getTierTextColor, getTierBorderHoverClass, getTierTextHoverClass } from '@/shared/lib/utils';
 import { useTranslation } from 'react-i18next';
-import Footer from '@shared/ui/Footer';
-import Header from '@shared/ui/Header';
 import { supabase } from '@/shared/api/supabase';
 import { logEvent } from '@/analytics';
 
@@ -12,6 +11,7 @@ const DOMAIN_SUFFIX = '@kazran.com';
 
 export default function Login() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { db, fetchAllMembers, setCurrentView, setCurrentUser, currentUser, isRoleLoading } = useAppContext();
   const [selectedGuildForLogin, setSelectedGuildForLogin] = useState<{ id: string, name: string } | null>(null);
   const [guildPassword, setGuildPassword] = useState('');
@@ -29,7 +29,7 @@ export default function Login() {
   const handleGuildSelect = async (guildId: string, guildName: string) => {
     if (currentUser) {
       if (!canSeeAllGuilds && guildId !== userGuildId) return;
-      setCurrentView({ type: 'guild', guildId });
+      navigate(`/guild/${guildId}`);
       return;
     }
 
@@ -69,7 +69,7 @@ export default function Login() {
 
       setCurrentUser(username.toLowerCase());
       await fetchAllMembers();
-      setCurrentView({ type: 'guild', guildId: selectedGuildForLogin.id });
+      navigate(`/guild/${selectedGuildForLogin.id}`);
     } catch (error: any) {
       setError(error.message);
       console.error(t('login.login_failed'), error);
@@ -125,7 +125,6 @@ export default function Login() {
 
   return (
     <div className="flex flex-col min-h-screen bg-stone-200 dark:bg-stone-950">
-      <Header />
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-stone-800 p-8 rounded-2xl shadow-xl w-full max-w-5xl transition-all duration-300">
           <h1 className="text-3xl font-bold text-center mb-8 text-stone-800 dark:text-stone-200">{t('login.system_title')}</h1>
@@ -237,7 +236,6 @@ export default function Login() {
           </div>
         </div>
       </div>
-      <Footer />
 
       {selectedGuildForLogin && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm">

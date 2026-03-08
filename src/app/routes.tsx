@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useParams } from 'react-router-dom';
 
 const Login = lazy(() => import('@features/auth/pages/Login'));
 const GuildDashboard = lazy(() => import('@features/guild/pages/GuildDashboard'));
@@ -10,13 +10,18 @@ const ApplicationMailbox = lazy(() => import('@features/mailbox/pages/Applicatio
 const ArcadePage = lazy(() => import('@features/arcade/pages/Arcade'));
 const Toolbox = lazy(() => import('@features/toolbox/pages/Toolbox'));
 
+const GuildDashboardWrapper = () => {
+    const { guildId } = useParams<{ guildId: string }>();
+    return <GuildDashboard guildId={guildId || ''} />;
+};
+
 export default function AppRoutes() {
 
     return (
         <Suspense fallback={<div className="flex h-screen items-center justify-center text-xl">載入中...</div>}>
             <Routes>
-                <Route path="/" element={<GuildDashboard />} />
-                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<Login />} />
+                <Route path="/guild/:guildId" element={<GuildDashboardWrapper />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/team" element={<TeamManagementPage />} />
                 <Route path="/raid" element={<AllianceRaidRecord />} />

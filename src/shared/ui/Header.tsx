@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '@/store';
 import { Shield, LogIn, LogOut, Settings, Users, User, Lock, AlertCircle, X, Globe, Volume2, VolumeX, Sun, Moon, Monitor, Layout, Mail, Gamepad2, Trophy, BookUser, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -114,6 +115,8 @@ function LoginModal({ onClose }: { onClose: () => void }) {
 
 export default function Header() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { db, currentUser, setCurrentUser, currentView, setCurrentView, userVolume, setUserVolume } = useAppContext();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
@@ -157,7 +160,7 @@ export default function Header() {
     logEvent('User', 'Logout', currentUser || 'unknown');
     await supabase.auth.signOut();
     setCurrentUser(null);
-    setCurrentView(null);
+    navigate('/');
   };
 
   const sortedGuilds = (Object.entries(db.guilds) as [string, any][]).sort((a, b) => {
@@ -194,8 +197,13 @@ export default function Header() {
 
   const topGuildId = canSeeAllGuilds ? (sortedGuilds.length > 0 ? sortedGuilds[0][0] : null) : userGuildId;
 
-  const isCostumeListActive = currentView?.type === 'guild';
-  const isAdminActive = currentView?.type === 'admin';
+  const isCostumeListActive = location.pathname.startsWith('/guild');
+  const isAdminActive = location.pathname === '/admin';
+  const isMailboxActive = location.pathname === '/mailbox';
+  const isArcadeActive = location.pathname === '/arcade';
+  const isMemberBoardActive = location.pathname === '/team';
+  const isToolboxActive = location.pathname === '/toolbox';
+  const isRaidActive = location.pathname === '/raid';
 
   const firstSettingId = db.settings && Object.keys(db.settings).length > 0 ? Object.keys(db.settings)[0] : 'default';
   const hasBgm = !!db.settings?.[firstSettingId]?.bgmUrl;
@@ -217,7 +225,7 @@ export default function Header() {
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1
             className="text-xl font-bold flex items-center gap-2 cursor-pointer hover:text-amber-400 transition-colors"
-            onClick={() => setCurrentView(null)}
+            onClick={() => navigate('/')}
           >
             <Shield className="w-6 h-6 text-amber-500" />
             <span className="hidden sm:inline">{t('header.system_title')}</span>
@@ -227,7 +235,7 @@ export default function Header() {
               onClick={() => {
                 if (topGuildId) {
                   logEvent('Navigation', 'Click', 'Costume List');
-                  setCurrentView({ type: 'guild', guildId: topGuildId });
+                  navigate(`/guild/${topGuildId}`);
                 }
               }}
               disabled={isCostumeListActive || !topGuildId}
@@ -241,10 +249,10 @@ export default function Header() {
               <button
                 onClick={() => {
                   logEvent('Navigation', 'Click', 'Application Mailbox');
-                  setCurrentView({ type: 'application_mailbox' });
+                  navigate('/mailbox');
                 }}
-                disabled={currentView?.type === 'application_mailbox'}
-                className={`flex items-center gap-2 transition-colors ${currentView?.type === 'application_mailbox' ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
+                disabled={isMailboxActive}
+                className={`flex items-center gap-2 transition-colors ${isMailboxActive ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
               >
                 <Mail className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('header.application_mailbox')}</span>
@@ -255,10 +263,10 @@ export default function Header() {
               <button
                 onClick={() => {
                   logEvent('Navigation', 'Click', 'Arcade');
-                  setCurrentView({ type: 'arcade' });
+                  navigate('/arcade');
                 }}
-                disabled={currentView?.type === 'arcade'}
-                className={`flex items-center gap-2 transition-colors ${currentView?.type === 'arcade' ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
+                disabled={isArcadeActive}
+                className={`flex items-center gap-2 transition-colors ${isArcadeActive ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
               >
                 <Gamepad2 className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('header.arcade')}</span>
@@ -269,10 +277,10 @@ export default function Header() {
               <button
                 onClick={() => {
                   logEvent('Navigation', 'Click', 'Team Assign Board');
-                  setCurrentView({ type: 'member_board' });
+                  navigate('/team');
                 }}
-                disabled={currentView?.type === 'member_board'}
-                className={`flex items-center gap-2 transition-colors ${currentView?.type === 'member_board' ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
+                disabled={isMemberBoardActive}
+                className={`flex items-center gap-2 transition-colors ${isMemberBoardActive ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
               >
                 <BookUser className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('header.member_board', "Team Assign Board")}</span>
@@ -283,10 +291,10 @@ export default function Header() {
               <button
                 onClick={() => {
                   logEvent('Navigation', 'Click', 'Toolbox');
-                  setCurrentView({ type: 'toolbox' });
+                  navigate('/toolbox');
                 }}
-                disabled={currentView?.type === 'toolbox'}
-                className={`flex items-center gap-2 transition-colors ${currentView?.type === 'toolbox' ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
+                disabled={isToolboxActive}
+                className={`flex items-center gap-2 transition-colors ${isToolboxActive ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
               >
                 <Wrench className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('header.toolbox_title')}</span>
@@ -299,10 +307,10 @@ export default function Header() {
                   <button
                     onClick={() => {
                       logEvent('Navigation', 'Click', 'Alliance Raid Record');
-                      setCurrentView({ type: 'alliance_raid_record' });
+                      navigate('/raid');
                     }}
-                    disabled={currentView?.type === 'alliance_raid_record'}
-                    className={`flex items-center gap-2 transition-colors ${currentView?.type === 'alliance_raid_record' ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
+                    disabled={isRaidActive}
+                    className={`flex items-center gap-2 transition-colors ${isRaidActive ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}
                   >
                     <Trophy className="w-4 h-4" />
                     <span className="hidden sm:inline">{t('header.alliance_raid_record')}</span>
@@ -313,7 +321,7 @@ export default function Header() {
                   <button
                     onClick={() => {
                       logEvent('Navigation', 'Click', 'Admin Settings');
-                      setCurrentView({ type: 'admin' });
+                      navigate('/admin');
                     }}
                     disabled={isAdminActive}
                     className={`flex items-center gap-2 transition-colors ${isAdminActive ? 'text-amber-500 cursor-default' : 'hover:text-amber-400'}`}

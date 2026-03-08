@@ -1,5 +1,3 @@
-import Header from '@/shared/ui/Header';
-import Footer from '@/shared/ui/Footer';
 import { MemberBoard } from '../components/MemberBoard';
 import { useAppContext } from '@/store';
 import { useEffect } from 'react';
@@ -17,13 +15,9 @@ export default function TeamManagementPage() {
 
     return (
         <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex flex-col">
-            <Header />
-
             <main className="flex-1 container mx-auto px-4 py-8">
                 <MemberBoard initialMembers={members} initialGuilds={guilds} onSave={fetchAllMembers} />
             </main>
-
-            <Footer />
         </div>
     );
 }

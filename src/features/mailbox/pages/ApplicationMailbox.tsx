@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAppContext } from '@/store';
 import { useTranslation } from 'react-i18next';
 import { logEvent } from '@/analytics';
-import Header from '@/shared/ui/Header';
-import Footer from '@/shared/ui/Footer';
 import { formatDate } from '@/shared/lib/utils';
 import {
   Mail,
@@ -163,8 +161,6 @@ export default function ApplicationMailbox() {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex flex-col">
-      <Header />
-
       <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl md:text-2xl font-bold text-stone-800 dark:text-stone-200 flex items-center gap-2">
@@ -263,8 +259,6 @@ export default function ApplicationMailbox() {
           </div>
         </div>
       </main>
-
-      <Footer />
 
       {/* Submit Modal */}
       {isModalOpen && (

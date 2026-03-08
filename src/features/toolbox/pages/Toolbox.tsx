@@ -1,7 +1,5 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import Header from '@/shared/ui/Header';
-import Footer from '@/shared/ui/Footer';
 import ScoreCalculator from '../components/ScoreCalculator';
 import { Wrench } from 'lucide-react';
 
@@ -10,8 +8,6 @@ const Toolbox: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex flex-col font-sans">
-      <Header />
-
       <main className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
@@ -36,8 +32,6 @@ const Toolbox: React.FC = () => {
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };
