@@ -79,7 +79,7 @@ export default function ApplicationMailbox() {
       'rejected': { label: t('mailbox:status_rejected', '拒絕'), color: 'text-red-600', icon: <XCircle className="w-4 h-4" /> },
       'discuss': { label: t('mailbox:status_discuss_full', '請到 Discord 聯絡總長'), color: 'text-amber-600', icon: <MessageCircle className="w-4 h-4" /> },
       'unclear': { label: t('mailbox:status_unclear_full', '意義不明。不受理，請重新申請'), color: 'text-purple-600', icon: <HelpCircle className="w-4 h-4" /> },
-      'who_are_you': { label: t('mailbox:status__who_are_you_full', '你是誰？不受理，請重新申請'), color: 'text-blue-600', icon: <Fingerprint className="w-4 h-4" /> },
+      'who_are_you': { label: t('mailbox:status_who_are_you_full', '你是誰？不受理，請重新申請'), color: 'text-blue-600', icon: <Fingerprint className="w-4 h-4" /> },
     };
 
     const s = statusMap[status] || statusMap['pending'];
