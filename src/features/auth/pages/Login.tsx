@@ -125,14 +125,14 @@ export default function Login() {
 
   return (
     <div className="flex flex-col min-h-screen bg-stone-200 dark:bg-stone-950">
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-stone-800 p-8 rounded-2xl shadow-xl w-full max-w-5xl transition-all duration-300">
-          <h1 className="text-3xl font-bold text-center mb-8 text-stone-800 dark:text-stone-200">{t('login.system_title')}</h1>
+      <div className="flex-1 flex items-center justify-center p-2 sm:p-4">
+        <div className="bg-white dark:bg-stone-800 p-4 sm:p-8 rounded-2xl shadow-xl w-full max-w-5xl transition-all duration-300">
+          <h1 className="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8 text-stone-800 dark:text-stone-200">{t('login.system_title')}</h1>
 
-          <div className="space-y-8">
-            <div className="p-6 border border-stone-200 dark:border-stone-700 rounded-xl bg-stone-50 dark:bg-stone-700">
-              <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
+          <div className="space-y-6 sm:space-y-8">
+            <div className="p-4 sm:p-6 border border-stone-200 dark:border-stone-700 rounded-xl bg-stone-50 dark:bg-stone-700">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 sm:mb-8 gap-4">
+                <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
                   <Users className="w-5 h-5" /> {t('login.select_guild')}
                 </h2>
 
@@ -240,8 +240,8 @@ export default function Login() {
       {selectedGuildForLogin && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm">
           <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
-            <div className="bg-stone-50 dark:bg-stone-700 px-6 py-4 border-b border-stone-200 dark:border-stone-600 flex justify-between items-center">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-stone-800 dark:text-stone-200">
+            <div className="bg-stone-50 dark:bg-stone-700 px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200 dark:border-stone-600 flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2 text-stone-800 dark:text-stone-200">
                 <Shield className="w-6 h-6 text-amber-600" /> {t('login.enter_guild', { guildName: selectedGuildForLogin.name })}
               </h2>
               <button onClick={() => setSelectedGuildForLogin(null)} className="p-2 hover:bg-stone-200 dark:hover:bg-stone-600 rounded-full transition-colors">
@@ -249,7 +249,7 @@ export default function Login() {
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <form onSubmit={handleGuildLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-stone-600 dark:text-stone-400 mb-1">{t('login.guild_password')}</label>

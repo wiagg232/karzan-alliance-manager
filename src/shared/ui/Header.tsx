@@ -66,8 +66,8 @@ function LoginModal({ onClose }: { onClose: () => void }) {
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         className="bg-white dark:bg-stone-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden"
       >
-        <div className="bg-stone-50 dark:bg-stone-700 px-6 py-4 border-b border-stone-200 dark:border-stone-600 flex justify-between items-center">
-          <h2 className="text-xl font-bold flex items-center gap-2 text-stone-800 dark:text-stone-200">
+        <div className="bg-stone-50 dark:bg-stone-700 px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200 dark:border-stone-600 flex justify-between items-center">
+          <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2 text-stone-800 dark:text-stone-200">
             <Shield className="w-6 h-6 text-amber-600" /> {t('header.admin_login')}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-stone-200 dark:hover:bg-stone-600 rounded-full transition-colors">
@@ -75,7 +75,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <form onSubmit={handleAdminLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-stone-600 dark:text-stone-400 mb-1">{t('header.account')}</label>
@@ -263,20 +263,20 @@ export default function Header() {
               <Shield className="w-6 h-6 text-amber-500" />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight leading-none">{t('header.system_title')}</span>
-              <span className="text-[10px] text-stone-500 uppercase tracking-widest font-mono">Alliance OS v2.0</span>
+              <span className="text-base sm:text-lg font-bold tracking-tight leading-none">{t('header.system_title')}</span>
+              <span className="text-[9px] sm:text-[10px] text-stone-500 uppercase tracking-widest font-mono hidden xs:inline">Alliance OS v2.0</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 ${
                 isMenuOpen ? 'bg-amber-500 text-stone-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]' : 'bg-stone-900 hover:bg-stone-800 text-stone-300'
               }`}
             >
               <Menu className={`w-5 h-5 transition-transform duration-500 ${isMenuOpen ? 'rotate-90' : ''}`} />
-              <span className="text-sm font-bold uppercase tracking-wider hidden sm:inline">
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider hidden sm:inline">
                 {isMenuOpen ? t('common.close', 'Close') : t('common.menu', 'Menu')}
               </span>
               {isMenuOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -285,7 +285,7 @@ export default function Header() {
             {!currentUser && (
               <button
                 onClick={() => setIsLoginModalOpen(true)}
-                className="p-2 bg-stone-900 hover:bg-stone-800 rounded-lg text-stone-300 transition-colors"
+                className="p-2.5 bg-stone-900 hover:bg-stone-800 rounded-lg text-stone-300 transition-colors"
                 title={t('header.login_btn')}
               >
                 <LogIn className="w-5 h-5" />
@@ -301,12 +301,12 @@ export default function Header() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="overflow-hidden bg-stone-950 border-t border-stone-800 shadow-2xl"
+              className="overflow-y-auto max-h-[calc(100vh-4rem)] bg-stone-950 border-t border-stone-800 shadow-2xl custom-scrollbar"
             >
-              <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="max-w-6xl mx-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
                 {/* Navigation Section */}
-                <motion.div variants={itemVariants} className="space-y-4">
-                  <h3 className="text-[10px] font-bold text-stone-500 uppercase tracking-[0.2em] border-b border-stone-800 pb-2">
+                <motion.div variants={itemVariants} className="space-y-3 sm:space-y-4">
+                  <h3 className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-[0.2em] border-b border-stone-800 pb-2">
                     {t('common.navigation', 'Navigation')}
                   </h3>
                   <div className="grid gap-1">
@@ -321,7 +321,7 @@ export default function Header() {
                             navigate(item.path!);
                             setIsMenuOpen(false);
                           }}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
+                          className={`flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-lg transition-all group ${
                             item.active 
                               ? 'bg-amber-500/10 text-amber-500' 
                               : 'text-stone-400 hover:bg-stone-900 hover:text-white'
@@ -336,8 +336,8 @@ export default function Header() {
                 </motion.div>
 
                 {/* User & Settings Section */}
-                <motion.div variants={itemVariants} className="space-y-4">
-                  <h3 className="text-[10px] font-bold text-stone-500 uppercase tracking-[0.2em] border-b border-stone-800 pb-2">
+                <motion.div variants={itemVariants} className="space-y-3 sm:space-y-4">
+                  <h3 className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-[0.2em] border-b border-stone-800 pb-2">
                     {t('common.account_settings', 'Account & Settings')}
                   </h3>
                   <div className="space-y-3">
@@ -348,13 +348,13 @@ export default function Header() {
                             {currentUser[0].toUpperCase()}
                           </div>
                           <div>
-                            <div className="text-sm font-bold text-white">{currentUser}</div>
+                            <div className="text-sm font-bold text-white truncate max-w-[150px]">{currentUser}</div>
                             <div className="text-[10px] text-stone-500 uppercase tracking-wider">{userRole}</div>
                           </div>
                         </div>
                         <button
                           onClick={handleLogout}
-                          className="w-full flex items-center justify-center gap-2 py-2 bg-stone-800 hover:bg-red-900/20 hover:text-red-400 text-stone-300 rounded-lg transition-all text-sm font-medium"
+                          className="w-full flex items-center justify-center gap-2 py-2.5 bg-stone-800 hover:bg-red-900/20 hover:text-red-400 text-stone-300 rounded-lg transition-all text-sm font-medium"
                         >
                           <LogOut className="w-4 h-4" />
                           {t('header.logout_simple', 'Logout')}
@@ -366,7 +366,7 @@ export default function Header() {
                           setIsLoginModalOpen(true);
                           setIsMenuOpen(false);
                         }}
-                        className="w-full flex items-center gap-3 px-3 py-3 bg-amber-500 text-stone-950 rounded-lg font-bold hover:bg-amber-400 transition-all text-sm"
+                        className="w-full flex items-center gap-3 px-3 py-3.5 bg-amber-500 text-stone-950 rounded-lg font-bold hover:bg-amber-400 transition-all text-sm"
                       >
                         <LogIn className="w-5 h-5" />
                         {t('header.login_btn')}
@@ -376,7 +376,7 @@ export default function Header() {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={cycleTheme}
-                        className="flex items-center justify-center gap-2 py-3 bg-stone-900 hover:bg-stone-800 rounded-lg text-stone-400 transition-all border border-stone-800"
+                        className="flex items-center justify-center gap-2 py-3.5 bg-stone-900 hover:bg-stone-800 rounded-lg text-stone-400 transition-all border border-stone-800"
                       >
                         {preference === 'light' && <Sun className="w-4 h-4" />}
                         {preference === 'dark' && <Moon className="w-4 h-4" />}
@@ -386,7 +386,7 @@ export default function Header() {
                       <div className="relative" ref={volumeContainerRef}>
                         <button
                           onClick={() => hasBgm && toggleMute()}
-                          className={`w-full flex items-center justify-center gap-2 py-3 bg-stone-900 rounded-lg transition-all border border-stone-800 ${
+                          className={`w-full flex items-center justify-center gap-2 py-3.5 bg-stone-900 rounded-lg transition-all border border-stone-800 ${
                             hasBgm ? 'hover:bg-stone-800 text-stone-400' : 'opacity-50 cursor-not-allowed'
                           }`}
                         >
@@ -399,14 +399,14 @@ export default function Header() {
                 </motion.div>
 
                 {/* Language Section */}
-                <motion.div variants={itemVariants} className="space-y-4">
-                  <h3 className="text-[10px] font-bold text-stone-500 uppercase tracking-[0.2em] border-b border-stone-800 pb-2">
+                <motion.div variants={itemVariants} className="space-y-3 sm:space-y-4">
+                  <h3 className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-[0.2em] border-b border-stone-800 pb-2">
                     {t('footer.language')}
                   </h3>
                   <div className="grid gap-2">
                     <button
                       onClick={() => i18n.changeLanguage('zh-TW')}
-                      className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                      className={`flex items-center justify-between px-4 py-3.5 rounded-lg border transition-all ${
                         i18n.language === 'zh-TW' 
                           ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' 
                           : 'bg-stone-900 border-stone-800 text-stone-400 hover:border-stone-700'
@@ -417,7 +417,7 @@ export default function Header() {
                     </button>
                     <button
                       onClick={() => i18n.changeLanguage('en')}
-                      className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                      className={`flex items-center justify-between px-4 py-3.5 rounded-lg border transition-all ${
                         i18n.language === 'en' 
                           ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' 
                           : 'bg-stone-900 border-stone-800 text-stone-400 hover:border-stone-700'
