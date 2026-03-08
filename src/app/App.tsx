@@ -1,4 +1,4 @@
-import { BrowserRouter } from 'react-router-dom';
+import { HashRouter } from 'react-router-dom';
 import AppRoutes from './routes';
 import { ThemeProvider } from '@app/providers/ThemeContext';
 import { AppProvider } from '@/store';
@@ -10,7 +10,7 @@ function App() {
   return (
     <AppProvider>
       <ThemeProvider>
-        <BrowserRouter>
+        <HashRouter>
           <div className="flex min-h-screen flex-col bg-zinc-950 text-white">
             <Header />
             <main className="flex-1">
@@ -19,7 +19,7 @@ function App() {
             <Footer />
             <Toaster />
           </div>
-        </BrowserRouter>
+        </HashRouter>
       </ThemeProvider>
     </AppProvider>
   );
