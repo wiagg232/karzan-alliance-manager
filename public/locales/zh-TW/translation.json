@@ -213,7 +213,8 @@
     "submit_failed": "提交失敗",
     "update_success": "更新成功",
     "update_failed": "更新失敗",
-    "submit": "送出"
+    "submit": "送出",
+    "restore": "還原"
   },
   "header": {
     "application_mailbox": "申請信箱",
