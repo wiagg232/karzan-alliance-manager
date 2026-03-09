@@ -119,7 +119,11 @@ export default function GuildSection({ guild, cardWidth }: Props) {
                         return (
                             <div
                                 key={member.id}
-                                className="h-[32px] border border-dashed border-gray-800 rounded-md m-0.5 flex items-center justify-center text-[9px] text-gray-700 italic"
+                                className="border border-dashed border-gray-800 rounded-md m-0.5 flex items-center justify-center text-[9px] text-gray-700 italic"
+                                style={{
+                                    minHeight: '40px',
+                                    width: `${cardWidth}px`,
+                                }}
                             >
                                 Slot {index + 1}
                             </div>

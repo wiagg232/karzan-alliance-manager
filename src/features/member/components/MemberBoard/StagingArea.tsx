@@ -14,6 +14,12 @@ export default function StagingArea() {
         }
     };
 
+    const getDynamicHeight = () => {
+        const base = 120; // header + padding
+        const cardHeight = 68; // MemberCard 實際高度（含間距）
+        return Math.max(200, base + stagingMembers.length * cardHeight);
+    };
+
     return (
         <div
             onClick={handleStagingClick}
@@ -23,6 +29,10 @@ export default function StagingArea() {
                 ${isMultiSelectMode && selectedIds.size > 0 ? 'cursor-pointer ring-2 ring-indigo-500' : 'cursor-default'}
                 ${stagingMembers.length > 0 ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-4 hover:opacity-100'}
             `}
+            style={{
+                height: `${getDynamicHeight()}px`,   // ← 新增動態高度
+                minHeight: '200px',
+            }}
         >
             <div className="p-3 border-b border-gray-700 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-gray-300">

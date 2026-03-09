@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Copy, Trash2, MoveHorizontal, Palette } from 'lucide-react';
+import { Copy, Trash2, MoveHorizontal, Palette, ArrowLeft } from 'lucide-react';
 import { useMemberBoardStore } from '../store/useMemberBoardStore';
-import type { Member } from '@entities/member/types';
+import type { Guild, Member } from '@entities/member/types';
 
 type Props = {
     member: Member;
     contextMenuPosition?: { x: number; y: number } | null;
     onCloseContextMenu?: () => void;
+    originalGuild?: Guild;
 };
 
 const COLORS = [
@@ -21,8 +22,8 @@ const COLORS = [
     { id: 'pink', bg: 'bg-pink-700', buttonBg: 'bg-pink-700', border: 'border-pink-500', buttonBorder: 'border-pink-500', hover: 'hover:bg-pink-600', name: '粉色' },
 ];
 
-export default function MemberCardContextMenu({ member, contextMenuPosition, onCloseContextMenu }: Props) {
-    const { duplicateMember, deleteMember, moveMember, localGuilds, updateMember } = useMemberBoardStore();
+export default function MemberCardContextMenu({ member, contextMenuPosition, onCloseContextMenu, originalGuild }: Props) {
+    const { stagingMembers, duplicateMember, deleteMember, moveMember, localGuilds, updateMember } = useMemberBoardStore();
     const [showContextMenu, setShowContextMenu] = useState(false);
     const [showGuildMenu, setShowGuildMenu] = useState(false);
     const [showColorMenu, setShowColorMenu] = useState(false);
@@ -76,18 +77,34 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         >
                             <MoveHorizontal size={14} /> 移動到其他公會
                         </button>
-                        <button
+                        {stagingMembers.every((stagingMember) => stagingMember.id != member.id) && <button
                             onClick={() => { useMemberBoardStore.getState().moveToStaging(member.id!); setShowContextMenu(false); }}
                             className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-900/50 text-indigo-300 flex items-center gap-2 cursor-pointer"
                         >
                             <MoveHorizontal size={14} /> 加入暫存區
-                        </button>
+                        </button>}
+
+                        {originalGuild && member.guildId !== originalGuild.id && (
+                            <button
+                                onClick={() => {
+                                    moveMember(member.id!, originalGuild.id!);
+                                    handleOpenChange(false); // 關閉選單
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-900/50 text-indigo-300 flex items-center gap-2 cursor-pointer"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                把成員送回原公會
+                            </button>
+                        )}
+
                         <button
                             onClick={() => { deleteMember(member.id!); setShowContextMenu(false); }}
                             className="w-full text-left px-4 py-2 text-sm hover:bg-red-900/50 text-red-300 flex items-center gap-2 cursor-pointer"
                         >
                             <Trash2 size={14} /> 刪除
                         </button>
+
+
                     </Popover.Content>
                 </Popover.Portal>
             </Popover.Root>

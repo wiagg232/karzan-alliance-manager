@@ -1,9 +1,14 @@
 // src/components/MemberBoard/MemberCard/MemberCard.tsx
-import { useState, useEffect } from 'react';
-import * as Tooltip from '@radix-ui/react-tooltip';
+import { useState, useEffect, useRef } from 'react';
+import { TooltipProvider } from "@radix-ui/react-tooltip";
 import type { Member } from '@entities/member/types';
 import MemberCardContextMenu from './MemberCardContextMenu';
 import { useMemberBoardStore } from '../store/useMemberBoardStore';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from "@/shared/ui/Tooltip";
 
 type Props = {
     member: Member;
@@ -34,9 +39,16 @@ export default function MemberCard({
     isVice = false,
     fixedWidth,
 }: Props) {
+
     const { initialMemberStates, localGuilds } = useMemberBoardStore();
 
     const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
+
+    const nameRef = useRef<HTMLDivElement>(null);
+    const [isNameTruncated, setIsNameTruncated] = useState(false);
+
+    const noteRef = useRef<HTMLDivElement>(null);
+    const [isNoteTruncated, setIsNoteTruncated] = useState(false);
 
     // ==================== 多選模式強制禁用 ====================
 
@@ -58,8 +70,63 @@ export default function MemberCard({
     const originalGuild = isMoved && !isNew && !isPasted ? localGuilds.find(g => g.id === initialState.guildId) : null;
 
 
+    useEffect(() => {
+        if (!nameRef.current) return;
+
+        const checkTruncation = () => {
+            if (nameRef.current) {
+                const { scrollWidth, clientWidth } = nameRef.current;
+                setIsNameTruncated(scrollWidth > clientWidth + 1);
+            }
+        };
+
+        checkTruncation();
+
+        const observer = new ResizeObserver(() => {
+            checkTruncation();
+        });
+
+        // 觀察 ref 元素本身
+        observer.observe(nameRef.current);
+
+        // 也可以觀察整個卡片（如果寬度變化來自父層）
+        // observer.observe(nameRef.current.parentElement!);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [member.name, originalGuild?.name, fixedWidth]);
+
+
+    useEffect(() => {
+        if (!noteRef.current) return;
+
+        const checkTruncation = () => {
+            if (noteRef.current) {
+                const { scrollWidth, clientWidth } = noteRef.current;
+                setIsNoteTruncated(scrollWidth > clientWidth + 1);
+            }
+        };
+
+        checkTruncation();
+
+        const observer = new ResizeObserver(() => {
+            checkTruncation();
+        });
+
+        // 觀察 ref 元素本身
+        observer.observe(noteRef.current);
+
+        // 也可以觀察整個卡片（如果寬度變化來自父層）
+        // observer.observe(nameRef.current.parentElement!);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [member.note]);
+
     return (
-        <Tooltip.Provider delayDuration={200}>
+        <TooltipProvider delayDuration={200}>
             <div
                 style={{
                     ...customStyle,
@@ -68,11 +135,11 @@ export default function MemberCard({
                 }}
                 className={`
           relative flex flex-col justify-center px-2 py-1 rounded-md border text-[18px] transition-all duration-100 group overflow-hidden cursor-default m-0.5
-          ${isLeader ? 'border-yellow-400 bg-gradient-to-r from-yellow-900/60 to-gray-900 shadow-[0_0_10px_rgba(250,204,21,0.3)]' : ''}
-          ${isVice ? 'border-purple-400 bg-gradient-to-r from-purple-900/50 to-gray-900 shadow-[0_0_8px_rgba(192,132,252,0.3)]' : ''}
-          ${isNew ? 'bg-emerald-900/40 border-emerald-500/50' : (isMoved || isPasted ? 'bg-amber-900/40 border-amber-500/50' : '')}
+          ${isLeader && !isSelected ? 'border-yellow-400 bg-yellow-900/60' : ''}
+          ${isVice && !isSelected ? 'border-purple-400 bg-purple-900/50' : ''}
+          ${isNew && !isSelected ? 'bg-emerald-900/40 border-emerald-500/50' : ((isMoved || isPasted) && !isSelected ? 'bg-amber-900/40 border-amber-500/50' : '')}
           ${isSelected
-                        ? 'bg-indigo-950/70 border-indigo-500 ring-1 ring-indigo-400/50 shadow-md'
+                        ? 'bg-indigo-800/70 border-indigo-500 ring-1 ring-indigo-400/50 shadow-md'
                         : (!isHexColor && !isMoved && !isNew && !isPasted ? baseBgClass : '')}
         `}
                 onClick={(e) => {
@@ -86,38 +153,63 @@ export default function MemberCard({
                     setContextMenuPosition({ x: e.clientX, y: e.clientY });
                 }}
             >
-                <div className="flex items-center w-full">
-                    {/* 名稱（靠左） */}
-                    <div className="flex-1 flex flex-col min-w-0">
-                        <div className="flex items-center gap-1">
-                            <span className="font-medium text-gray-100 truncate leading-none relative z-10">
-                                {member.name}
-                            </span>
-                            {isMoved && originalGuild && (
-                                <span className="text-[18px] px-1 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30 whitespace-nowrap">
-                                    ← {originalGuild.name}
-                                </span>
-                            )}
+                <div className="flex items-start justify-between gap-3">  {/* 主容器改 justify-between */}
+
+                    {/* 左邊：名字 */}
+                    <div className="min-w-0 flex-1">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="flex min-w-0">
+                                    {/* 名字可截斷 */}
+                                    <span ref={nameRef} className="truncate text-[18px]">
+                                        {member.name}
+                                    </span>
+                                </div>
+                            </TooltipTrigger>
+                            {isNameTruncated && <TooltipContent
+                                side="top"
+                                align="end"
+                                sideOffset={4}
+                                alignOffset={-10}
+                                collisionBoundary={document.body}  // 可選：限制碰撞邊界
+                            >{member.name}
+                            </TooltipContent>}
+                        </Tooltip>
+                    </div>
+
+                    {/* 右邊：總分 */}
+                    <div className="flex-shrink-0 text-right">
+                        <div className="text-[18px] font-medium transition-colors hover:text-emerald-300 text-emerald-400">
+                            {member.totalScore ?? 0}
                         </div>
                     </div>
 
-                    {/* 總分（靠右） */}
-                    <div className={`text-[18px] font-medium transition-colors hover:text-emerald-300 text-emerald-400`}>
-                        {member.totalScore ?? 0}
-                    </div>
                 </div>
+
+                {isMoved && originalGuild && (
+                    <span className="max-w-[100px] text-[18px] px-1 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30 whitespace-nowrap">
+                        ← {originalGuild.name}
+                    </span>
+                )}
 
                 {/* 備註（名字下方） */}
                 {member.note && (
-                    <div className="mt-0.5 relative z-10">
-                        <Tooltip.Root>
-                            <Tooltip.Trigger asChild>
-                                <div className={`text-[18px] text-gray-400 truncate min-h-[12px] transition-colors select-none`}               >
-                                    {member.note}
-                                </div>
-                            </Tooltip.Trigger>
-                        </Tooltip.Root>
-                    </div>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div ref={noteRef} className="mt-1 text-xs text-gray-400 line-clamp-2 cursor-default">
+                                {member.note}
+                            </div>
+                        </TooltipTrigger>
+                        {isNoteTruncated && <TooltipContent
+                            side="top"
+                            align="end"
+                            sideOffset={4}
+                            alignOffset={-10}
+                            collisionBoundary={document.body}  // 可選：限制碰撞邊界
+                        >
+                            <p className="whitespace-pre-wrap">{member.note}</p>
+                        </TooltipContent>}
+                    </Tooltip>
                 )}
 
                 {/* 右鍵選單 */}
@@ -125,8 +217,9 @@ export default function MemberCard({
                     member={member}
                     contextMenuPosition={contextMenuPosition}
                     onCloseContextMenu={() => setContextMenuPosition(null)}
+                    originalGuild={originalGuild}   // ← 新增這行
                 />
             </div>
-        </Tooltip.Provider>
+        </TooltipProvider>
     );
 }

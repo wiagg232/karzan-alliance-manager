@@ -138,7 +138,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
 
 
     return (
-        <div className="relative max-h-[720px] w-full overflow-hidden bg-gray-950 text-gray-100">
+        <div className="flex-1 relative w-full overflow-hidden bg-gray-950 text-gray-100">
             {/* 頂部控制列 */}
             <div className="absolute top-3 right-3 z-50 flex items-center gap-3">
                 <button
