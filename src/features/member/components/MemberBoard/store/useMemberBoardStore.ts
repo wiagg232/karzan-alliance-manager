@@ -326,17 +326,18 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
 
             const selectedIds = state.selectedIds;
 
-            // 處理 localMembers
+            // 先把所有選取的成員從原本位置移除（保證唯一性）
             let newLocalMembers = state.localMembers.filter(m => !selectedIds.has(m.id!));
-            let newStagingMembers = [...state.stagingMembers];
+            let newStagingMembers = state.stagingMembers.filter(m => !selectedIds.has(m.id!));
 
             const membersToMove = [...state.localMembers, ...state.stagingMembers].filter(m => selectedIds.has(m.id!));
 
+            let updated: Member[];
             if (targetGuildId === 'staging') {
-                const updated = membersToMove.map(m => ({ ...m, guildId: 'staging', updatedAt: Date.now() }));
+                updated = membersToMove.map(m => ({ ...m, guildId: 'staging', updatedAt: Date.now() }));
                 newStagingMembers = [...newStagingMembers, ...updated];
             } else {
-                const updated = membersToMove.map(m => ({ ...m, guildId: targetGuildId, updatedAt: Date.now() }));
+                updated = membersToMove.map(m => ({ ...m, guildId: targetGuildId, updatedAt: Date.now() }));
                 newLocalMembers = [...newLocalMembers, ...updated];
             }
 

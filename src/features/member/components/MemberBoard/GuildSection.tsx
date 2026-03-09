@@ -1,4 +1,4 @@
-import { useDroppable } from '@dnd-kit/core';
+
 import { Plus } from 'lucide-react';
 import MemberCard from './MemberCard/MemberCard';
 import type { Guild, Member } from '@entities/member/types';
@@ -72,7 +72,7 @@ export default function GuildSection({ guild, cardWidth }: Props) {
         const priB = getPriority(b.role);
 
         if (priA !== priB) return priA - priB;
-        
+
         return (a.updatedAt ?? 0) - (b.updatedAt ?? 0);
     });
 
@@ -94,7 +94,7 @@ export default function GuildSection({ guild, cardWidth }: Props) {
         ${isMultiSelectMode && selectedIds.size > 0 ? 'cursor-pointer ring-2 ring-indigo-500' : 'cursor-default'}
         border-gray-700
       `}
-            style={{ width: `${cardWidth + 20}px` }}
+            style={{ width: `${cardWidth + 50}px` }}
         >
             {/* 公會標題 + 總分小計 */}
             <div className="px-4 py-3 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700 flex justify-between items-center">
@@ -112,13 +112,13 @@ export default function GuildSection({ guild, cardWidth }: Props) {
                 </div>
             </div>
 
-            <div className="p-0.5 grid grid-cols-1 gap-0 bg-gray-950/60 min-h-[50px]">
+            <div className="p-0.5 grid grid-cols-1 gap-0 bg-gray-950/60 min-h-[50px] place-items-center">
                 {displaySlots.map((member, index) => {
                     const isEmpty = member.id?.startsWith('empty-');
                     if (isEmpty) {
                         return (
-                            <div 
-                                key={member.id} 
+                            <div
+                                key={member.id}
                                 className="h-[32px] border border-dashed border-gray-800 rounded-md m-0.5 flex items-center justify-center text-[9px] text-gray-700 italic"
                             >
                                 Slot {index + 1}

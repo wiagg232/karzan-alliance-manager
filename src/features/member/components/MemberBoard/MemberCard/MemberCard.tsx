@@ -1,8 +1,5 @@
 // src/components/MemberBoard/MemberCard/MemberCard.tsx
-import { useState } from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import type { Member } from '@entities/member/types';
 import MemberCardContextMenu from './MemberCardContextMenu';
@@ -39,24 +36,21 @@ export default function MemberCard({
     fixedWidth,
 }: Props) {
     const { initialMemberStates, localGuilds, updateMember } = useMemberBoardStore();
+
     const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteValue, setNoteValue] = useState(member.note || '');
 
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id: member.id!, disabled: true }); // Disable sorting
+    // ==================== 多選模式強制禁用 ====================
+    const canEdit = !isMultiSelectMode;
 
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        zIndex: isDragging ? 100 : 1,
-    };
+    // 切換到多選模式時強制關閉備註編輯（防止狀態殘留）
+    useEffect(() => {
+        if (isMultiSelectMode && isEditingNote) {
+            setIsEditingNote(false);
+            setNoteValue(member.note || '');
+        }
+    }, [isMultiSelectMode, member.note]);
 
     const initialState = initialMemberStates[member.id!];
     const isMoved = initialState && initialState.guildId !== member.guildId;
@@ -69,8 +63,8 @@ export default function MemberCard({
         : 'bg-gray-850 border-gray-700 hover:border-gray-500 hover:bg-gray-800/80';
 
     const customStyle = isHexColor ? {
-        backgroundColor: `${member.color}40`, // 25% opacity
-        borderColor: `${member.color}80`, // 50% opacity
+        backgroundColor: `${member.color}40`,
+        borderColor: `${member.color}80`,
     } : {};
 
     const originalGuild = isMoved && !isNew && !isPasted ? localGuilds.find(g => g.id === initialState.guildId) : null;
@@ -83,9 +77,7 @@ export default function MemberCard({
     return (
         <Tooltip.Provider delayDuration={200}>
             <div
-                ref={setNodeRef}
                 style={{
-                    ...style,
                     ...customStyle,
                     minHeight: '40px',
                     width: `${fixedWidth}px`,
@@ -126,12 +118,15 @@ export default function MemberCard({
                     </div>
 
                     {/* 總分（靠右，可編輯） */}
-                    <MemberScoreEditor member={member} />
+                    <MemberScoreEditor
+                        member={member}
+                        disabled={!canEdit}
+                    />
                 </div>
 
-                {/* 備註（名字下方，左下） */}
+                {/* 備註（名字下方） */}
                 <div className="mt-0.5 relative z-10">
-                    {isEditingNote ? (
+                    {isEditingNote && canEdit ? (
                         <input
                             type="text"
                             value={noteValue}
@@ -150,12 +145,26 @@ export default function MemberCard({
                             autoFocus
                         />
                     ) : (
-                        <div 
-                            className="text-[9px] text-gray-400 truncate cursor-text hover:text-gray-200 min-h-[12px]"
-                            onClick={(e) => { e.stopPropagation(); setIsEditingNote(true); }}
-                        >
-                            {member.note || <span className="opacity-30 italic">Add note...</span>}
-                        </div>
+                        <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                                <div
+                                    className={`
+                                        text-[9px] text-gray-400 truncate min-h-[12px] transition-colors
+                                        ${canEdit
+                                            ? 'cursor-text hover:text-gray-200'
+                                            : 'select-none'}
+                                    `}
+                                    onClick={(e) => {
+                                        if (canEdit) {
+                                            e.stopPropagation();
+                                            setIsEditingNote(true);
+                                        }
+                                    }}
+                                >
+                                    {member.note || <span className="opacity-30 italic">Add note...</span>}
+                                </div>
+                            </Tooltip.Trigger>
+                        </Tooltip.Root>
                     )}
                 </div>
 

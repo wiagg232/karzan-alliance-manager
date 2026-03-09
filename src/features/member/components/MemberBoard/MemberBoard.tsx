@@ -1,7 +1,6 @@
 // src/components/MemberBoard/MemberBoard.tsx
-import { useEffect, useState, useRef } from 'react';
-import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
-import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
+import { useEffect } from 'react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useMemberBoardStore } from './store/useMemberBoardStore';
 import { buildTieredData } from './utils/dataUtils';
 import TierSection from './TierSection';
