@@ -9,6 +9,8 @@ import ZoomControls from './ZoomControls';
 import NotificationModal from './NotificationModal';
 import type { Member, Guild, TieredData } from '@entities/member/types';
 import StagingArea from './StagingArea';
+import DeletionArea from './DeletionArea';
+import ConnectionLines from './ConnectionLines';
 import { RotateCcw } from 'lucide-react';
 
 type Props = {
@@ -130,17 +132,26 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
                     document.activeElement.blur();
                 }
             }
+
+            // Clear selection on background click
+            if (selectedIds.size > 0) {
+                const target = e.target as HTMLElement;
+                const isInteractive = target.closest('.member-card, .guild-section, .staging-area, .deletion-area, .batch-action-bar, .top-controls, button, [role="button"], [data-radix-popper-content-wrapper]');
+                if (!isInteractive) {
+                    clearSelection();
+                }
+            }
         };
         window.addEventListener('pointerdown', handleGlobalPointerDown, { capture: true });
         return () => window.removeEventListener('pointerdown', handleGlobalPointerDown, { capture: true });
-    }, []);
+    }, [selectedIds, clearSelection]);
 
 
 
     return (
         <div className="flex-1 relative w-full overflow-hidden bg-gray-950 text-gray-100">
             {/* 頂部控制列 */}
-            <div className="absolute top-3 right-3 z-50 flex items-center gap-3">
+            <div className="top-controls absolute top-3 right-3 z-50 flex items-center gap-3">
                 <button
                     onClick={undo}
                     disabled={history.length === 0}
@@ -192,8 +203,9 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
                 centerOnInit={false}
             >
                 <TransformComponent wrapperStyle={{ width: '300%', height: '100%' }}>
-                    <div className="min-h-[180vh] pb-[1200px] p-4">
-                        <div className="w-full grid grid-cols-2 gap-4">
+                    <div className="min-h-[180vh] pb-[1200px] p-4 relative">
+                        <ConnectionLines />
+                        <div className="w-full grid grid-cols-2 gap-4 relative z-10">
                             {tieredData.map(({ tier, guilds }) => (
                                 <TierSection key={tier} tier={tier} guilds={guilds} />
                             ))}
@@ -205,6 +217,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
             </TransformWrapper>
 
             <StagingArea />
+            <DeletionArea />
 
 
             <BatchActionBar />

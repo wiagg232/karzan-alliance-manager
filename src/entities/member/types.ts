@@ -27,6 +27,8 @@ export interface Member {
   updatedAt?: number;
   status?: string;
   archiveRemark?: string;
+  parentId?: string;
+  isReserved?: boolean;
 }
 
 export interface Character {

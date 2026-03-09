@@ -36,7 +36,7 @@ export default function BatchActionBar() {
     if (selectedIds.size === 0 || !isMultiSelectMode) return null;
 
     return (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-md border border-gray-700 shadow-2xl rounded-2xl px-8 py-4 flex items-center gap-6 z-50 text-gray-200">
+        <div className="batch-action-bar fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-md border border-gray-700 shadow-2xl rounded-2xl px-8 py-4 flex items-center gap-6 z-50 text-gray-200">
             <div className="font-medium">
                 已選 {selectedIds.size} 位
             </div>

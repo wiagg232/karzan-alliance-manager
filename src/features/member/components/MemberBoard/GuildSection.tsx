@@ -90,7 +90,7 @@ export default function GuildSection({ guild, cardWidth }: Props) {
             ref={containerRef}
             onClick={handleGuildClick}
             className={`
-        relative bg-gray-900 rounded-xl border overflow-hidden flex flex-col shadow-sm flex-shrink-0 transition-all duration-200
+        guild-section relative bg-gray-900 rounded-xl border overflow-hidden flex flex-col shadow-sm flex-shrink-0 transition-all duration-200
         ${isMultiSelectMode && selectedIds.size > 0 ? 'cursor-pointer ring-2 ring-indigo-500' : 'cursor-default'}
         border-gray-700
       `}
@@ -143,6 +143,7 @@ export default function GuildSection({ guild, cardWidth }: Props) {
                             isLeader={isLeader}
                             isVice={isVice}
                             fixedWidth={cardWidth}
+                            index={index}
                         />
                     );
                 })}

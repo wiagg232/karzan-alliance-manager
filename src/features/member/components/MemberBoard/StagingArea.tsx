@@ -15,36 +15,39 @@ export default function StagingArea() {
     };
 
     const getDynamicHeight = () => {
-        const base = 120; // header + padding
-        const cardHeight = 68; // MemberCard 實際高度（含間距）
-        return Math.max(200, base + stagingMembers.length * cardHeight);
+        const base = 50; // header
+        const cardHeight = 60; // Smaller MemberCard height + gap
+        const calculated = base + stagingMembers.length * cardHeight + 10;
+        // Limit to 80% of viewport height to avoid going off-screen
+        return Math.min(window.innerHeight * 0.8, Math.max(100, calculated));
     };
 
     return (
         <div
             onClick={handleStagingClick}
             className={`
-                fixed top-24 left-8 w-64 bg-gray-900/90 backdrop-blur-md border-2 rounded-2xl shadow-2xl transition-all duration-300 z-[100]
+                staging-area fixed top-24 left-8 w-56 bg-gray-900/90 backdrop-blur-md border-2 rounded-2xl shadow-2xl transition-all duration-300 z-[100] flex flex-col
                
                 ${isMultiSelectMode && selectedIds.size > 0 ? 'cursor-pointer ring-2 ring-indigo-500' : 'cursor-default'}
                 ${stagingMembers.length > 0 ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-4 hover:opacity-100'}
             `}
             style={{
-                height: `${getDynamicHeight()}px`,   // ← 新增動態高度
-                minHeight: '200px',
+                maxHeight: '100vh',
+                height: 'auto',
+                minHeight: stagingMembers.length > 0 ? '100px' : '60px',
             }}
         >
-            <div className="p-3 border-b border-gray-700 flex items-center justify-between">
+            <div className="p-2 border-b border-gray-700 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-gray-300">
-                    <Inbox size={18} />
-                    <span className="text-sm font-bold uppercase tracking-wider">暫存區 (Staging)</span>
+                    <Inbox size={16} />
+                    <span className="text-xs font-bold uppercase tracking-wider">暫存區</span>
                 </div>
-                <span className="bg-gray-800 text-gray-400 text-[10px] px-2 py-0.5 rounded-full border border-gray-700">
+                <span className="bg-gray-800 text-gray-400 text-[10px] px-1.5 py-0.5 rounded-full border border-gray-700">
                     {stagingMembers.length}
                 </span>
             </div>
 
-            <div className="max-h-64 overflow-y-auto p-2 custom-scrollbar min-h-[60px]">
+            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar min-h-[60px]">
                 {stagingMembers.length === 0 && (
                     <div className="h-12 flex items-center justify-center text-gray-600 text-[10px] italic">
                         移動成員至此暫存
@@ -58,7 +61,7 @@ export default function StagingArea() {
                             isSelected={selectedIds.has(member.id!)}
                             isMultiSelectMode={isMultiSelectMode}
                             onToggleSelect={() => toggleSelect(member.id!)}
-                            fixedWidth={230}
+                            fixedWidth={200}
                         />
                     ))}
                 </div>

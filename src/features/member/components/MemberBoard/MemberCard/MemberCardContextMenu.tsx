@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Copy, Trash2, MoveHorizontal, Palette, ArrowLeft } from 'lucide-react';
+import { Copy, Trash2, MoveHorizontal, Palette, ArrowLeft, Lock, Unlock } from 'lucide-react';
 import { useMemberBoardStore } from '../store/useMemberBoardStore';
 import type { Guild, Member } from '@entities/member/types';
 
@@ -45,6 +45,8 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
         }
     };
 
+    const isReserved = member.isReserved;
+
     return (
         <>
             <Popover.Root open={showContextMenu} onOpenChange={handleOpenChange}>
@@ -60,37 +62,55 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         }}
                     >
                         <button
+                            onClick={() => {
+                                updateMember(member.id!, { isReserved: !isReserved });
+                                setShowContextMenu(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-800 flex items-center gap-2 cursor-pointer ${isReserved ? 'text-yellow-400' : 'text-gray-200'}`}
+                        >
+                            {isReserved ? <Unlock size={14} /> : <Lock size={14} />}
+                            {isReserved ? '移除保留席' : '設為保留席'}
+                        </button>
+
+                        <div className="h-px bg-gray-700 my-1" />
+
+                        <button
+                            disabled={isReserved}
                             onClick={() => { setShowColorMenu(!showColorMenu); setShowGuildMenu(false); }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-800 text-gray-200 flex items-center gap-2 cursor-pointer"
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 text-gray-200 cursor-pointer'}`}
                         >
                             <Palette size={14} /> 標記顏色
                         </button>
                         <button
+                            disabled={isReserved}
                             onClick={() => { duplicateMember(member.id!); setShowContextMenu(false); }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-800 text-gray-200 flex items-center gap-2 cursor-pointer"
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 text-gray-200 cursor-pointer'}`}
                         >
                             <Copy size={14} /> 複製
                         </button>
                         <button
+                            disabled={isReserved}
                             onClick={() => { setShowGuildMenu(!showGuildMenu); setShowColorMenu(false); }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-900/50 text-indigo-300 flex items-center gap-2 cursor-pointer"
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-indigo-900/50 text-indigo-300 cursor-pointer'}`}
                         >
                             <MoveHorizontal size={14} /> 移動到其他公會
                         </button>
                         {stagingMembers.every((stagingMember) => stagingMember.id != member.id) && <button
+                            disabled={isReserved}
                             onClick={() => { useMemberBoardStore.getState().moveToStaging(member.id!); setShowContextMenu(false); }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-900/50 text-indigo-300 flex items-center gap-2 cursor-pointer"
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-indigo-900/50 text-indigo-300 cursor-pointer'}`}
                         >
                             <MoveHorizontal size={14} /> 加入暫存區
                         </button>}
 
                         {originalGuild && member.guildId !== originalGuild.id && (
                             <button
+                                disabled={isReserved}
                                 onClick={() => {
                                     moveMember(member.id!, originalGuild.id!);
                                     handleOpenChange(false); // 關閉選單
                                 }}
-                                className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-900/50 text-indigo-300 flex items-center gap-2 cursor-pointer"
+                                className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-indigo-900/50 text-indigo-300 cursor-pointer'}`}
                             >
                                 <ArrowLeft className="w-4 h-4" />
                                 把成員送回原公會
@@ -98,8 +118,9 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         )}
 
                         <button
+                            disabled={isReserved}
                             onClick={() => { deleteMember(member.id!); setShowContextMenu(false); }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-red-900/50 text-red-300 flex items-center gap-2 cursor-pointer"
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-red-900/50 text-red-300 cursor-pointer'}`}
                         >
                             <Trash2 size={14} /> 刪除
                         </button>

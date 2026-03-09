@@ -6,8 +6,9 @@ type Store = {
     localMembers: Member[];
     localGuilds: Guild[];
     stagingMembers: Member[]; // ← 暫存區成員
-    history: { local: Member[], staging: Member[] }[]; // ← 歷史紀錄，用於 Undo
-    redoStack: { local: Member[], staging: Member[] }[]; // ← Redo 堆疊
+    deletedMembers: Member[]; // ← 刪除區成員
+    history: { local: Member[], staging: Member[], deleted: Member[] }[]; // ← 歷史紀錄，用於 Undo
+    redoStack: { local: Member[], staging: Member[], deleted: Member[] }[]; // ← Redo 堆疊
     selectedIds: Set<string>;
     isMultiSelectMode: boolean;
     initialMemberStates: Record<string, { guildId: string; note?: string }>;
@@ -36,6 +37,7 @@ type Store = {
     toggleSelect: (id: string) => void;
     setMultiSelectMode: (mode: boolean) => void;
     clearSelection: () => void;
+    clearDeletedMembers: () => void;
 
     // 貼上（Ctrl+V）
     pasteMembers: (pasted: Member[]) => void;
@@ -58,6 +60,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
     localMembers: [],
     localGuilds: [],
     stagingMembers: [],
+    deletedMembers: [],
     history: [],
     redoStack: [], // ← 初始化
     selectedIds: new Set(),
@@ -83,6 +86,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             localMembers: [...members],
             localGuilds: [...guilds],
             stagingMembers: [],
+            deletedMembers: [],
             history: [],
             redoStack: [],
             initialMemberStates: initialStates,
@@ -94,7 +98,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             const newMembers = [...state.localMembers, { ...member }];
             return {
                 localMembers: newMembers,
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [], // 新操作清空 redo
                 initialMemberStates: {
                     ...state.initialMemberStates,
@@ -111,31 +115,37 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             stagingMembers: state.stagingMembers.map((m) =>
                 m.id === id ? { ...m, ...updates } : m
             ),
-            history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+            history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
             redoStack: [], // 新操作清空 redo
         })),
 
     deleteMember: (id) =>
-        set((state) => ({
-            localMembers: state.localMembers.filter((m) => m.id !== id),
-            stagingMembers: state.stagingMembers.filter((m) => m.id !== id),
-            selectedIds: new Set([...state.selectedIds].filter((sid) => sid !== id)),
-            history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
-            redoStack: [], // 新操作清空 redo
-        })),
+        set((state) => {
+            const memberToDelete = state.localMembers.find(m => m.id === id) || state.stagingMembers.find(m => m.id === id);
+            if (!memberToDelete || memberToDelete.isReserved) return state;
+
+            return {
+                localMembers: state.localMembers.filter((m) => m.id !== id),
+                stagingMembers: state.stagingMembers.filter((m) => m.id !== id),
+                deletedMembers: [...state.deletedMembers, memberToDelete],
+                selectedIds: new Set([...state.selectedIds].filter((sid) => sid !== id)),
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
+                redoStack: [], // 新操作清空 redo
+            };
+        }),
 
     duplicateMember: (id) =>
         set((state) => {
             const original = state.localMembers.find((m) => m.id === id) || state.stagingMembers.find(m => m.id === id);
-            if (!original) return state;
-            const copy = { ...original, id: uuidv4(), updatedAt: Date.now() };
+            if (!original || original.isReserved) return state;
+            const copy = { ...original, id: uuidv4(), updatedAt: Date.now(), parentId: original.id };
             const newInitialStates = {
                 ...state.initialMemberStates,
                 [copy.id]: { guildId: copy.guildId, note: copy.note }
             };
             return {
                 localMembers: [...state.localMembers, copy],
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [], // 新操作清空 redo
                 initialMemberStates: newInitialStates
             };
@@ -144,7 +154,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
     moveMember: (id, newGuildId) =>
         set((state) => {
             const member = state.localMembers.find(m => m.id === id) || state.stagingMembers.find(m => m.id === id);
-            if (!member) return {};
+            if (!member || member.isReserved) return {};
 
             const initialState = state.initialMemberStates[id];
             let newNote = member.note;
@@ -182,7 +192,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             return {
                 localMembers: newLocal,
                 stagingMembers: newStaging,
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [], // 新操作清空 redo
             };
         }),
@@ -190,14 +200,14 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
     moveToStaging: (id) =>
         set((state) => {
             const member = state.localMembers.find(m => m.id === id);
-            if (!member) return {};
+            if (!member || member.isReserved) return {};
 
             const updatedMember = { ...member, guildId: 'staging', updatedAt: Date.now() };
 
             return {
                 localMembers: state.localMembers.filter(m => m.id !== id),
                 stagingMembers: [...state.stagingMembers, updatedMember],
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [], // 新操作清空 redo
             };
         }),
@@ -209,8 +219,9 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             return {
                 localMembers: previous.local,
                 stagingMembers: previous.staging,
+                deletedMembers: previous.deleted,
                 history: state.history.slice(0, -1),
-                redoStack: [...state.redoStack, { local: state.localMembers, staging: state.stagingMembers }],
+                redoStack: [...state.redoStack, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
             };
         }),
 
@@ -221,7 +232,8 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             return {
                 localMembers: next.local,
                 stagingMembers: next.staging,
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                deletedMembers: next.deleted,
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: state.redoStack.slice(0, -1),
             };
         }),
@@ -234,26 +246,31 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             stagingMembers: state.stagingMembers.map((m) =>
                 state.selectedIds.has(m.id!) ? { ...m, color, updatedAt: Date.now() } : m
             ),
-            history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+            history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
         })),
 
     batchDelete: () =>
-        set((state) => ({
-            localMembers: state.localMembers.filter((m) => !state.selectedIds.has(m.id!)),
-            stagingMembers: state.stagingMembers.filter((m) => !state.selectedIds.has(m.id!)),
-            selectedIds: new Set(),
-            history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
-        })),
+        set((state) => {
+            const membersToDelete = [...state.localMembers, ...state.stagingMembers].filter(m => state.selectedIds.has(m.id!));
+
+            return {
+                localMembers: state.localMembers.filter((m) => !state.selectedIds.has(m.id!)),
+                stagingMembers: state.stagingMembers.filter((m) => !state.selectedIds.has(m.id!)),
+                deletedMembers: [...state.deletedMembers, ...membersToDelete],
+                selectedIds: new Set(),
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
+            };
+        }),
 
     batchDuplicate: () =>
         set((state) => {
             const duplicatesLocal = state.localMembers
                 .filter((m) => state.selectedIds.has(m.id!))
-                .map((m) => ({ ...m, id: uuidv4(), updatedAt: Date.now() }));
+                .map((m) => ({ ...m, id: uuidv4(), updatedAt: Date.now(), parentId: m.id }));
 
             const duplicatesStaging = state.stagingMembers
                 .filter((m) => state.selectedIds.has(m.id!))
-                .map((m) => ({ ...m, id: uuidv4(), updatedAt: Date.now() }));
+                .map((m) => ({ ...m, id: uuidv4(), updatedAt: Date.now(), parentId: m.id }));
 
             const newInitialStates = { ...state.initialMemberStates };
             [...duplicatesLocal, ...duplicatesStaging].forEach(d => {
@@ -264,7 +281,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
                 localMembers: [...state.localMembers, ...duplicatesLocal],
                 stagingMembers: [...state.stagingMembers, ...duplicatesStaging],
                 initialMemberStates: newInitialStates,
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
             };
         }),
 
@@ -316,7 +333,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             return {
                 localMembers: newLocalMembers,
                 stagingMembers: newStagingMembers,
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
             };
         }),
 
@@ -345,13 +362,16 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
                 localMembers: newLocalMembers,
                 stagingMembers: newStagingMembers,
                 selectedIds: new Set(),
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [],
             };
         }),
 
     toggleSelect: (id) =>
         set((state) => {
+            const member = state.localMembers.find(m => m.id === id) || state.stagingMembers.find(m => m.id === id);
+            if (member?.isReserved) return state;
+
             const newSet = new Set(state.selectedIds);
             newSet.has(id) ? newSet.delete(id) : newSet.add(id);
             return { selectedIds: newSet };
@@ -359,6 +379,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
 
     setMultiSelectMode: (mode) => set({ isMultiSelectMode: mode }),
     clearSelection: () => set({ selectedIds: new Set() }),
+    clearDeletedMembers: () => set({ deletedMembers: [] }),
 
     // Ctrl+V 貼上
     pasteMembers: (pasted) =>
@@ -370,7 +391,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             });
             return {
                 localMembers: [...state.localMembers, ...newMembers],
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers }],
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 initialMemberStates: newInitialStates,
             };
         }),

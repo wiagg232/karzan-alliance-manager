@@ -18,6 +18,7 @@ type Props = {
     isLeader?: boolean;
     isVice?: boolean;
     fixedWidth: number;
+    index?: number;
 };
 
 const COLOR_CLASSES: Record<string, string> = {
@@ -38,6 +39,7 @@ export default function MemberCard({
     isLeader = false,
     isVice = false,
     fixedWidth,
+    index = 0,
 }: Props) {
 
     const { initialMemberStates, localGuilds } = useMemberBoardStore();
@@ -57,6 +59,8 @@ export default function MemberCard({
     const isNew = initialState && initialState.guildId === 'new';
     const isPasted = initialState && initialState.guildId === 'pasted';
 
+    const isOverCapacity = index >= 30;
+
     const isHexColor = member.color?.startsWith('#');
     const baseBgClass = !isHexColor && member.color && COLOR_CLASSES[member.color]
         ? COLOR_CLASSES[member.color]
@@ -68,7 +72,6 @@ export default function MemberCard({
     } : {};
 
     const originalGuild = isMoved && !isNew && !isPasted ? localGuilds.find(g => g.id === initialState.guildId) : null;
-
 
     useEffect(() => {
         if (!nameRef.current) return;
@@ -127,99 +130,115 @@ export default function MemberCard({
 
     return (
         <TooltipProvider delayDuration={200}>
-            <div
-                style={{
-                    ...customStyle,
-                    minHeight: '40px',
-                    width: `${fixedWidth}px`,
-                }}
-                className={`
-          relative flex flex-col justify-center px-2 py-1 rounded-md border text-[18px] transition-all duration-100 group overflow-hidden cursor-default m-0.5
+            <Tooltip open={member.isReserved ? undefined : false}>
+                <TooltipTrigger asChild>
+                    <div
+                        id={`member-${member.id}`}
+                        style={{
+                            ...customStyle,
+                            minHeight: '40px',
+                            width: `${fixedWidth}px`,
+                        }}
+                        className={`
+          member-card
+          relative flex flex-col justify-center px-2 py-1 rounded-md border text-[18px] transition-all duration-100 group overflow-hidden m-0.5 select-none
+          ${member.isReserved ? 'cursor-not-allowed opacity-60 grayscale-[0.5]' : 'cursor-default'}
           ${isLeader && !isSelected ? 'border-yellow-400 bg-yellow-900/60' : ''}
           ${isVice && !isSelected ? 'border-purple-400 bg-purple-900/50' : ''}
-          ${isNew && !isSelected ? 'bg-emerald-900/40 border-emerald-500/50' : ((isMoved || isPasted) && !isSelected ? 'bg-amber-900/40 border-amber-500/50' : '')}
+          ${isOverCapacity && !isSelected ? 'bg-red-600 border-red-400 text-white' : ''}
+          ${isNew && !isSelected && !isOverCapacity ? 'bg-emerald-900/40 border-emerald-500/50' : ((isMoved || isPasted) && !isSelected && !isOverCapacity ? 'bg-amber-900/40 border-amber-500/50' : '')}
           ${isSelected
-                        ? 'bg-indigo-800/70 border-indigo-500 ring-1 ring-indigo-400/50 shadow-md'
-                        : (!isHexColor && !isMoved && !isNew && !isPasted ? baseBgClass : '')}
+                                ? 'bg-indigo-800/70 border-indigo-500 ring-1 ring-indigo-400/50 shadow-md'
+                                : (!isHexColor && !isMoved && !isNew && !isPasted ? baseBgClass : '')}
         `}
-                onClick={(e) => {
-                    if (isMultiSelectMode && !e.defaultPrevented) {
-                        e.stopPropagation();
-                        onToggleSelect();
-                    }
-                }}
-                onContextMenu={(e) => {
-                    e.preventDefault();
-                    setContextMenuPosition({ x: e.clientX, y: e.clientY });
-                }}
-            >
-                <div className="flex items-start justify-between gap-3">  {/* 主容器改 justify-between */}
-
-                    {/* 左邊：名字 */}
-                    <div className="min-w-0 flex-1">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="flex min-w-0">
-                                    {/* 名字可截斷 */}
-                                    <span ref={nameRef} className="truncate text-[18px]">
-                                        {member.name}
-                                    </span>
+                        onClick={(e) => {
+                            if (member.isReserved) return;
+                            if (isMultiSelectMode && !e.defaultPrevented) {
+                                e.stopPropagation();
+                                onToggleSelect();
+                            }
+                        }}
+                        onContextMenu={(e) => {
+                            e.preventDefault();
+                            setContextMenuPosition({ x: e.clientX, y: e.clientY });
+                        }}
+                    >
+                        {member.isReserved && (
+                            <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+                                <div className="text-yellow-400 bg-black/60 backdrop-blur-[1px] px-2 py-0.5 rounded border border-yellow-500/50 text-[10px] font-black uppercase tracking-widest shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                                    Reserved
                                 </div>
-                            </TooltipTrigger>
-                            {isNameTruncated && <TooltipContent
-                                side="top"
-                                align="end"
-                                sideOffset={4}
-                                alignOffset={-10}
-                                collisionBoundary={document.body}  // 可選：限制碰撞邊界
-                            >{member.name}
-                            </TooltipContent>}
-                        </Tooltip>
-                    </div>
-
-                    {/* 右邊：總分 */}
-                    <div className="flex-shrink-0 text-right">
-                        <div className="text-[18px] font-medium transition-colors hover:text-emerald-300 text-emerald-400">
-                            {member.totalScore ?? 0}
-                        </div>
-                    </div>
-
-                </div>
-
-                {isMoved && originalGuild && (
-                    <span className="max-w-[100px] text-[18px] px-1 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30 whitespace-nowrap">
-                        ← {originalGuild.name}
-                    </span>
-                )}
-
-                {/* 備註（名字下方） */}
-                {member.note && (
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div ref={noteRef} className="mt-1 text-xs text-gray-400 line-clamp-2 cursor-default">
-                                {member.note}
                             </div>
-                        </TooltipTrigger>
-                        {isNoteTruncated && <TooltipContent
-                            side="top"
-                            align="end"
-                            sideOffset={4}
-                            alignOffset={-10}
-                            collisionBoundary={document.body}  // 可選：限制碰撞邊界
-                        >
-                            <p className="whitespace-pre-wrap">{member.note}</p>
-                        </TooltipContent>}
-                    </Tooltip>
-                )}
+                        )}
+                        <div className="flex items-start justify-between gap-3">  {/* 主容器改 justify-between */}
 
-                {/* 右鍵選單 */}
-                <MemberCardContextMenu
-                    member={member}
-                    contextMenuPosition={contextMenuPosition}
-                    onCloseContextMenu={() => setContextMenuPosition(null)}
-                    originalGuild={originalGuild}   // ← 新增這行
-                />
-            </div>
+                            {/* 左邊：名字 */}
+                            <div className="min-w-0 flex-1">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex min-w-0">
+                                            {/* 名字可截斷 */}
+                                            <div ref={nameRef} className="truncate text-[18px] w-full">
+                                                {member.name}
+                                            </div>
+                                        </div>
+                                    </TooltipTrigger>
+                                    {isNameTruncated && <TooltipContent
+                                        side="top"
+                                        align="end"
+                                        sideOffset={4}
+                                        alignOffset={-10}
+                                        collisionBoundary={document.body}  // 可選：限制碰撞邊界
+                                    >{member.name}
+                                    </TooltipContent>}
+                                </Tooltip>
+                            </div>
+
+                            {/* 右邊：總分 */}
+                            <div className="flex-shrink-0 text-right">
+                                <div className="text-[18px] font-medium transition-colors hover:text-emerald-300 text-emerald-400">
+                                    {member.totalScore ?? 0}
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {isMoved && originalGuild && (
+                            <span className="max-w-[120px] truncate text-[18px] px-1 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30 whitespace-nowrap inline-block">
+                                ↑ {originalGuild.name}
+                            </span>
+                        )}
+
+                        {/* 備註（名字下方） */}
+                        {member.note && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div ref={noteRef} className="mt-1 text-xs text-gray-400 line-clamp-2 cursor-default select-none">
+                                        {member.note}
+                                    </div>
+                                </TooltipTrigger>
+                                {isNoteTruncated && <TooltipContent
+                                    side="top"
+                                    align="end"
+                                    sideOffset={4}
+                                    alignOffset={-10}
+                                    collisionBoundary={document.body}  // 可選：限制碰撞邊界
+                                >
+                                    <p className="whitespace-pre-wrap">{member.note}</p>
+                                </TooltipContent>}
+                            </Tooltip>
+                        )}
+
+                        {/* 右鍵選單 */}
+                        <MemberCardContextMenu
+                            member={member}
+                            contextMenuPosition={contextMenuPosition}
+                            onCloseContextMenu={() => setContextMenuPosition(null)}
+                            originalGuild={originalGuild}   // ← 新增這行
+                        />
+                    </div>
+                </TooltipTrigger>
+            </Tooltip>
         </TooltipProvider>
     );
 }
