@@ -8,6 +8,7 @@ const GuildDashboard = lazy(() => import('@features/guild/pages/GuildDashboard')
 const AdminDashboard = lazy(() => import('@features/admin/pages/AdminDashboard'));
 const TeamManagementPage = lazy(() => import('@features/member/pages/TeamManagementPage'));
 const AllianceRaidRecord = lazy(() => import('@features/raid/pages/AllianceRaidRecord'));
+const GuildRaidManager = lazy(() => import('@features/raid/pages/GuildRaidManager'));
 const ApplicationMailbox = lazy(() => import('@features/mailbox/pages/ApplicationMailbox'));
 const ArcadePage = lazy(() => import('@features/arcade/pages/Arcade'));
 const Toolbox = lazy(() => import('@features/toolbox/pages/Toolbox'));
@@ -45,6 +46,11 @@ export default function AppRoutes() {
                 <Route path="/raid" element={
                     <ProtectedRoute pageId="alliance_raid_record">
                         <AllianceRaidRecord />
+                    </ProtectedRoute>
+                } />
+                <Route path="/raid-manager" element={
+                    <ProtectedRoute pageId="guild_raid_manager">
+                        <GuildRaidManager />
                     </ProtectedRoute>
                 } />
                 <Route path="/mailbox" element={

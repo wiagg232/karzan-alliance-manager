@@ -8,6 +8,7 @@ export const getDefaultRoles = (pageId: string): ('member' | 'manager' | 'admin'
     case 'alliance_raid_record': return ['creator'];
     case 'toolbox': return ['manager', 'admin', 'creator'];
     case 'member_board': return ['member', 'manager', 'admin', 'creator'];
+    case 'guild_raid_manager': return ['manager', 'admin', 'creator'];
     default: return ['creator', 'admin'];
   }
 };
