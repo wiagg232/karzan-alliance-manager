@@ -235,6 +235,7 @@
     "toolbox": "小工具",
     "toolbox_title": "小工具",
     "alliance_raid_record": "聯盟成績記錄",
+    "guild_raid_manager": "公會聯合戰管理",
     "logout": "登出({{user}})",
     "logout_simple": "登出",
     "login_btn": "登入",

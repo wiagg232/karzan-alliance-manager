@@ -287,6 +287,13 @@ export default function GuildRaidManager() {
     });
   };
 
+  // Auto-cancel draft records when context changes
+  useEffect(() => {
+    if (Object.keys(draftRecords).length > 0) {
+      setDraftRecords({});
+    }
+  }, [selectedSeasonId, isComparisonMode]);
+
   const handleArchiveSeason = async () => {
     if (!selectedSeasonId) return;
     setArchiving(true);
@@ -363,7 +370,7 @@ export default function GuildRaidManager() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-stone-800 dark:text-stone-100">
-                {t('raid.title_guild_manager', '公會分數管理')}
+                {t('raid.title_guild_manager', '公會聯合戰管理')}
               </h1>
             </div>
           </div>
@@ -395,7 +402,12 @@ export default function GuildRaidManager() {
             </button>
 
             <button
-              onClick={() => setIsArchiveModalOpen(true)}
+              onClick={() => {
+                if (Object.keys(draftRecords).length > 0) {
+                  setDraftRecords({});
+                }
+                setIsArchiveModalOpen(true);
+              }}
               disabled={isSelectedSeasonArchived}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${
                 isSelectedSeasonArchived
@@ -432,7 +444,7 @@ export default function GuildRaidManager() {
           </div>
         )}
 
-        {/* Guild Selection & Calculator */}
+        {/* Guild Selection */}
         <div className="flex flex-col lg:flex-row gap-6 mb-6 items-start">
           <div className="flex-1 w-full bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden">
             <button 
@@ -483,23 +495,6 @@ export default function GuildRaidManager() {
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-
-          <div className="w-full lg:w-80 flex-shrink-0 bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden">
-            <button 
-              onClick={() => setIsCalculatorOpen(!isCalculatorOpen)}
-              className="w-full px-4 py-3 flex items-center justify-between bg-stone-50 dark:bg-stone-700/50 hover:bg-stone-100 dark:hover:bg-stone-600 transition-colors"
-            >
-              <span className="font-bold text-stone-800 dark:text-stone-200">
-                {t('toolbox:score_calculator.title', '戰鬥分數反推計算機')} (舊)
-              </span>
-              {isCalculatorOpen ? <ChevronDown className="w-5 h-5 text-stone-500" /> : <ChevronRight className="w-5 h-5 text-stone-500" />}
-            </button>
-            {isCalculatorOpen && (
-              <div className="p-0">
-                <ScoreCalculator label="(舊)" enableDefenseScore={true} noBorder={true} />
               </div>
             )}
           </div>

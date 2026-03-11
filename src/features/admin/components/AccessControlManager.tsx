@@ -18,7 +18,7 @@ export default function AccessControlManager() {
     { id: 'application_mailbox', label: t('header.application_mailbox'), icon: <Mail className="w-5 h-5" /> },
     { id: 'arcade', label: t('header.arcade'), icon: <Gamepad2 className="w-5 h-5" /> },
     { id: 'alliance_raid_record', label: t('header.alliance_raid_record'), icon: <Trophy className="w-5 h-5" /> },
-    { id: 'guild_raid_manager', label: t('header.guild_raid_manager', '公會戰管理'), icon: <Trophy className="w-5 h-5" /> },
+    { id: 'guild_raid_manager', label: t('header.guild_raid_manager', '公會聯合戰管理'), icon: <Trophy className="w-5 h-5" /> },
     { id: 'member_board', label: t('header.member_board', "Team Assign Board"), icon: <BookUser className="w-5 h-5" /> },
     { id: 'toolbox', label: t('header.toolbox_title', '小工具'), icon: <Wrench className="w-5 h-5" /> },
     { id: 'admin_settings', label: t('header.admin_settings', '後台設定'), icon: <Settings className="w-5 h-5" /> },

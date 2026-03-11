@@ -1,0 +1,52 @@
+
+export interface DeductionResult {
+  level: number;
+  turn: number;
+  borrow: number;
+}
+
+export function deduceScore(targetScore: number): string {
+  if (targetScore === 0) return '';
+
+  const LANCELOT_SCORE = 49;
+  const remainingScore = targetScore - LANCELOT_SCORE;
+  const foundResults: DeductionResult[] = [];
+
+  // Difficulty: Lv 1 to 10
+  for (let level = 1; level <= 10; level++) {
+    const diffScore = level * 500;
+    if (diffScore > remainingScore) continue;
+
+    // Turns: 1 to 28
+    for (let turn = 1; turn <= 28; turn++) {
+      const turnScore = 80 - (turn - 1) * 3;
+      if (turnScore <= 0) continue;
+
+      // Borrow: 0, 1, 2
+      const borrowScores = [4, 3, 0];
+      for (let borrow = 0; borrow < borrowScores.length; borrow++) {
+        const borrowScore = borrowScores[borrow];
+
+        if (diffScore + turnScore + borrowScore === remainingScore) {
+          foundResults.push({
+            level,
+            turn,
+            borrow
+          });
+        }
+      }
+    }
+  }
+
+  if (foundResults.length === 0) return '不明';
+
+  // Sort results by level (desc) then turn (asc) then borrow (asc)
+  return foundResults
+    .sort((a, b) => {
+      if (b.level !== a.level) return b.level - a.level;
+      if (a.turn !== b.turn) return a.turn - b.turn;
+      return a.borrow - b.borrow;
+    })
+    .map(res => `Lv${res.level} ${res.turn}T 借${res.borrow}`)
+    .join('\n');
+}

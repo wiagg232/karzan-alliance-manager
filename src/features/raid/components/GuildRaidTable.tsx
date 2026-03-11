@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Pencil, Save, X, ArrowDownWideNarrow, ArrowDownNarrowWide } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Member } from '@/entities/member/types';
+import { deduceScore } from '../utils/scoreDeduction';
 
 interface MemberRaidRecord {
   id?: string;
@@ -50,27 +51,16 @@ export default function GuildRaidTable({
   onCancel
 }: GuildRaidTableProps) {
   const { t } = useTranslation(['raid', 'translation']);
-  const [isEditing, setIsEditing] = useState(false);
 
-  // Reset editing state when season changes or comparison mode changes
-  React.useEffect(() => {
-    console.log('GuildRaidTable Resetting isEditing:', {
-      guildId,
-      seasonId,
-      isComparisonMode,
-      isArchived
-    });
-    setIsEditing(false);
-  }, [seasonId, isComparisonMode]);
+  const guildMemberIds = sortedMembers.map(m => m.id!);
+  const hasChanges = guildMemberIds.some(id => !!draftRecords[id]);
 
   const handleSave = async () => {
     await onSave(guildId);
-    setIsEditing(false);
   };
 
   const handleCancel = () => {
     onCancel(guildId);
-    setIsEditing(false);
   };
 
   return (
@@ -81,27 +71,22 @@ export default function GuildRaidTable({
           <span className="text-xs font-normal text-stone-500 dark:text-stone-400">({sortedMembers.length} {t('common.member', '成員')})</span>
         </div>
         <div className="flex items-center gap-2">
-          {isEditing ? (
-            <>
-              <button onClick={handleCancel} className="flex items-center gap-1 px-3 py-1.5 text-sm bg-stone-200 dark:bg-stone-600 text-stone-700 dark:text-stone-200 rounded hover:bg-stone-300 dark:hover:bg-stone-500 transition-colors">
-                <X className="w-4 h-4" />
-                {t('common.cancel', '取消')}
-              </button>
-              <button onClick={handleSave} disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                <Save className="w-4 h-4" />
-                {saving ? t('common.saving', '儲存中...') : t('common.save', '儲存')}
-              </button>
-            </>
-          ) : (
-            <button 
-              onClick={() => setIsEditing(true)} 
-              disabled={!!isComparisonMode || !!isArchived}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Pencil className="w-4 h-4" />
-              {t('common.edit', '編輯')}
-            </button>
-          )}
+          <button 
+            onClick={handleCancel} 
+            disabled={!hasChanges || saving}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-stone-200 dark:bg-stone-600 text-stone-700 dark:text-stone-200 rounded hover:bg-stone-300 dark:hover:bg-stone-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <X className="w-4 h-4" />
+            {t('raid.restore', '還原')}
+          </button>
+          <button 
+            onClick={handleSave} 
+            disabled={!hasChanges || saving}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? t('common.saving', '儲存中...') : t('common.save', '儲存')}
+          </button>
         </div>
       </div>
       
@@ -125,6 +110,22 @@ export default function GuildRaidTable({
                     )}
                   </div>
                 </th>
+                <th 
+                  className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-600 w-24"
+                  onClick={() => onSort('score')}
+                >
+                  <div className="flex items-center gap-1">
+                    {t('raid.column_score', '個人總分')}
+                    {sortConfig.key === 'score' && (
+                      sortConfig.order === 'asc' 
+                        ? <ArrowDownWideNarrow className="w-3.5 h-3.5 text-indigo-500" />
+                        : <ArrowDownNarrowWide className="w-3.5 h-3.5 text-indigo-500" />
+                    )}
+                  </div>
+                </th>
+                <th className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 w-32">
+                  {t('raid.column_deduction', '推算')}
+                </th>
                 {!isComparisonMode && (
                   <th className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600">
                     {t('raid.column_note', '成員備註')}
@@ -135,19 +136,6 @@ export default function GuildRaidTable({
                     {t('raid.column_season_note', '賽季備註')}
                   </th>
                 )}
-                <th 
-                  className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-600 w-24"
-                  onClick={() => onSort('score')}
-                >
-                  <div className="flex items-center gap-1">
-                    {t('raid.column_score', '分數')}
-                    {sortConfig.key === 'score' && (
-                      sortConfig.order === 'asc' 
-                        ? <ArrowDownWideNarrow className="w-3.5 h-3.5 text-indigo-500" />
-                        : <ArrowDownNarrowWide className="w-3.5 h-3.5 text-indigo-500" />
-                    )}
-                  </div>
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -167,54 +155,59 @@ export default function GuildRaidTable({
                         <span className="truncate max-w-[120px]">{member.name}</span>
                       </button>
                     </td>
-                    {!isComparisonMode && (
                       <td className="py-1 px-2">
-                        {isEditing ? (
+                        {!isArchived ? (
                           <input
-                            type="text"
-                            value={noteValue}
-                            onChange={(e) => onRecordChange(member.id!, 'note', e.target.value)}
-                            className={`w-full px-2 py-1 text-sm border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
+                            type="number"
+                            min="0"
+                            max="10000"
+                            value={record.score || ''}
+                            onChange={(e) => onRecordChange(member.id!, 'score', e.target.value)}
+                            className={`w-full px-2 py-1 text-sm border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
                           />
                         ) : (
-                          <div className="px-2 py-1 text-sm text-stone-800 dark:text-stone-200 truncate">
-                            {noteValue || ''}
+                          <div className="px-2 py-1 text-sm text-stone-800 dark:text-stone-200">
+                            {record.score || 0}
                           </div>
                         )}
                       </td>
-                    )}
-                    {!isComparisonMode && (
                       <td className="py-1 px-2">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={record.season_note || ''}
-                            onChange={(e) => onRecordChange(member.id!, 'season_note', e.target.value)}
-                            className={`w-full px-2 py-1 text-sm border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
-                          />
-                        ) : (
-                          <div className="px-2 py-1 text-sm text-stone-800 dark:text-stone-200 truncate">
-                            {record.season_note || ''}
-                          </div>
-                        )}
-                      </td>
-                    )}
-                    <td className="py-1 px-2">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="10000"
-                          value={record.score || ''}
-                          onChange={(e) => onRecordChange(member.id!, 'score', e.target.value)}
-                          className={`w-full px-2 py-1 text-sm border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
-                        />
-                      ) : (
-                        <div className="px-2 py-1 text-sm text-stone-800 dark:text-stone-200">
-                          {record.score || 0}
+                        <div className="px-2 py-1 text-xs text-stone-600 dark:text-stone-400 font-mono whitespace-pre-line leading-tight">
+                          {deduceScore(record.score || 0)}
                         </div>
+                      </td>
+                      {!isComparisonMode && (
+                        <td className="py-1 px-2">
+                          {!isArchived ? (
+                            <input
+                              type="text"
+                              value={noteValue}
+                              onChange={(e) => onRecordChange(member.id!, 'note', e.target.value)}
+                              className={`w-full px-2 py-1 text-sm border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
+                            />
+                          ) : (
+                            <div className="px-2 py-1 text-sm text-stone-800 dark:text-stone-200 truncate">
+                              {noteValue || ''}
+                            </div>
+                          )}
+                        </td>
                       )}
-                    </td>
+                      {!isComparisonMode && (
+                        <td className="py-1 px-2">
+                          {!isArchived ? (
+                            <input
+                              type="text"
+                              value={record.season_note || ''}
+                              onChange={(e) => onRecordChange(member.id!, 'season_note', e.target.value)}
+                              className={`w-full px-2 py-1 text-sm border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
+                            />
+                          ) : (
+                            <div className="px-2 py-1 text-sm text-stone-800 dark:text-stone-200 truncate">
+                              {record.season_note || ''}
+                            </div>
+                          )}
+                        </td>
+                      )}
                   </tr>
                 );
               })}

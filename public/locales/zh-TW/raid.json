@@ -24,10 +24,12 @@
     "generated_at": "生成於"
   },
   "raid": {
-    "title_guild_manager": "公會戰管理",
+    "title_guild_manager": "公會聯合戰管理",
     "comparison_mode": "並列模式",
     "save_all": "儲存所有變更",
-    "column_score": "分數",
+    "restore": "還原",
+    "column_score": "個人總分",
+    "column_deduction": "推算",
     "column_note": "成員備註",
     "column_season_note": "賽季備註",
     "stats": "練度資訊",
