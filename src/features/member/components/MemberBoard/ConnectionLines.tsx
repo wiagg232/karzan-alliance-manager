@@ -4,7 +4,11 @@ import { useMemberBoardStore } from './store/useMemberBoardStore';
 export default function ConnectionLines() {
     const { localMembers, stagingMembers } = useMemberBoardStore();
     const [lines, setLines] = useState<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
+    const linesRef = useRef(lines);
     const containerRef = useRef<SVGSVGElement>(null);
+    
+    // Update ref whenever lines change
+    linesRef.current = lines;
 
     useEffect(() => {
         const updateLines = () => {
@@ -50,14 +54,31 @@ export default function ConnectionLines() {
                     }
                 }
             });
-            setLines(newLines);
+            // Only update state if lines actually changed (shallow comparison)
+            const currentLines = linesRef.current;
+            if (newLines.length !== currentLines.length) {
+                setLines(newLines);
+            } else {
+                let hasChanged = false;
+                for (let i = 0; i < newLines.length; i++) {
+                    if (newLines[i].x1 !== currentLines[i].x1 || newLines[i].y1 !== currentLines[i].y1 ||
+                        newLines[i].x2 !== currentLines[i].x2 || newLines[i].y2 !== currentLines[i].y2) {
+                        hasChanged = true;
+                        break;
+                    }
+                }
+                if (hasChanged) {
+                    setLines(newLines);
+                }
+            }
         };
 
         // Initial update
         updateLines();
         
         // Polling for position changes (e.g. after layout shifts or moves)
-        const interval = setInterval(updateLines, 200);
+        // Reduced interval from 200ms to 500ms for better performance
+        const interval = setInterval(updateLines, 500);
         
         // Update on window events
         window.addEventListener('resize', updateLines);

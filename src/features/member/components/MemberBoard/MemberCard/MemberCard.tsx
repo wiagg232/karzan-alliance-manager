@@ -1,7 +1,7 @@
 // src/components/MemberBoard/MemberCard/MemberCard.tsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { TooltipProvider } from "@radix-ui/react-tooltip";
-import type { Member } from '@entities/member/types';
+import type { Member, Guild } from '@entities/member/types';
 import MemberCardContextMenu from './MemberCardContextMenu';
 import { useMemberBoardStore } from '../store/useMemberBoardStore';
 import {
@@ -19,6 +19,8 @@ type Props = {
     isVice?: boolean;
     fixedWidth: number;
     index?: number;
+    originalGuild?: Guild;
+    isInDeletionArea?: boolean;
 };
 
 const COLOR_CLASSES: Record<string, string> = {
@@ -40,6 +42,8 @@ export default function MemberCard({
     isVice = false,
     fixedWidth,
     index = 0,
+    originalGuild,
+    isInDeletionArea = false,
 }: Props) {
 
     const { initialMemberStates, localGuilds } = useMemberBoardStore();
@@ -71,7 +75,14 @@ export default function MemberCard({
         borderColor: `${member.color}80`,
     } : {};
 
-    const originalGuild = isMoved && !isNew && !isPasted ? localGuilds.find(g => g.id === initialState.guildId) : null;
+    // Calculate originalGuild if not provided via prop
+    const calculatedOriginalGuild = useMemo(() => {
+        if (!isMoved || isNew || isPasted || !initialState) return null;
+        return localGuilds.find(g => g.id === initialState.guildId) || null;
+    }, [isMoved, isNew, isPasted, localGuilds, initialState]);
+
+    // Use prop if provided, otherwise use calculated value
+    const finalOriginalGuild = originalGuild || calculatedOriginalGuild;
 
     useEffect(() => {
         if (!nameRef.current) return;
@@ -203,17 +214,18 @@ export default function MemberCard({
 
                         </div>
 
-                        {isMoved && originalGuild && (
+                        {isMoved && finalOriginalGuild && (
                             <span className="max-w-[120px] truncate text-[18px] px-1 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30 whitespace-nowrap inline-block">
-                                ↑ {originalGuild.name}
+                                ↑ {finalOriginalGuild.name}
                             </span>
                         )}
 
                         {/* 備註（名字下方） */}
-                        {member.note && (
+                        {(member.note || member.friendGroup) && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <div ref={noteRef} className="mt-1 text-xs text-gray-400 line-clamp-2 cursor-default select-none">
+                                        {member.friendGroup && <span className="text-emerald-400 mr-1">[{member.friendGroup}]</span>}
                                         {member.note}
                                     </div>
                                 </TooltipTrigger>
@@ -224,7 +236,9 @@ export default function MemberCard({
                                     alignOffset={-10}
                                     collisionBoundary={document.body}  // 可選：限制碰撞邊界
                                 >
-                                    <p className="whitespace-pre-wrap">{member.note}</p>
+                                    <p className="whitespace-pre-wrap">
+                                        {member.friendGroup && <span className="text-emerald-400">[{member.friendGroup}]</span>} {member.note}
+                                    </p>
                                 </TooltipContent>}
                             </Tooltip>
                         )}
@@ -234,7 +248,8 @@ export default function MemberCard({
                             member={member}
                             contextMenuPosition={contextMenuPosition}
                             onCloseContextMenu={() => setContextMenuPosition(null)}
-                            originalGuild={originalGuild}   // ← 新增這行
+                            originalGuild={finalOriginalGuild}
+                            isInDeletionArea={isInDeletionArea}
                         />
                     </div>
                 </TooltipTrigger>

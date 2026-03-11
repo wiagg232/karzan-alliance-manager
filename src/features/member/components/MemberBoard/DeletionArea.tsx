@@ -1,10 +1,10 @@
 // src/features/member/components/MemberBoard/DeletionArea.tsx
-import { Trash2, X } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import MemberCard from './MemberCard/MemberCard';
 import { useMemberBoardStore } from './store/useMemberBoardStore';
 
 export default function DeletionArea() {
-    const { deletedMembers, clearDeletedMembers } = useMemberBoardStore();
+    const { deletedMembers, selectedIds, isMultiSelectMode, toggleSelect, localGuilds, initialMemberStates } = useMemberBoardStore();
 
     if (deletedMembers.length === 0) return null;
 
@@ -17,7 +17,7 @@ export default function DeletionArea() {
 
     return (
         <div
-            className="deletion-area fixed bottom-8 right-8 w-56 bg-red-950/80 backdrop-blur-md border-2 border-red-900/50 rounded-2xl shadow-2xl transition-all duration-300 z-[100] flex flex-col overflow-hidden"
+            className="deletion-area fixed bottom-8 right-8 w-40 bg-red-950/80 backdrop-blur-md border-2 border-red-900/50 rounded-2xl shadow-2xl transition-all duration-300 z-[100] flex flex-col overflow-hidden select-none"
             style={{
                 maxHeight: '60vh',
                 height: 'auto',
@@ -32,28 +32,28 @@ export default function DeletionArea() {
                     <span className="bg-red-900/40 text-red-200 text-[10px] px-1.5 py-0.5 rounded-full border border-red-800/50">
                         {deletedMembers.length}
                     </span>
-                    <button 
-                        onClick={clearDeletedMembers}
-                        className="p-1 hover:bg-red-800/50 rounded-full text-red-400 transition-colors"
-                        title="清空刪除區"
-                    >
-                        <X size={14} />
-                    </button>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-1.5 custom-scrollbar">
                 <div className="flex flex-col gap-1">
-                    {deletedMembers.map((member) => (
-                        <MemberCard
-                            key={member.id}
-                            member={member}
-                            isSelected={false}
-                            isMultiSelectMode={false}
-                            onToggleSelect={() => {}}
-                            fixedWidth={200}
-                        />
-                    ))}
+                    {deletedMembers.map((member) => {
+                        const initialState = initialMemberStates[member.id!];
+                        const originalGuild = initialState ? localGuilds.find(g => g.id === initialState.guildId) : null;
+
+                        return (
+                            <MemberCard
+                                key={member.id}
+                                member={member}
+                                isSelected={selectedIds.has(member.id!)}
+                                isMultiSelectMode={isMultiSelectMode}
+                                onToggleSelect={() => toggleSelect(member.id!)}
+                                fixedWidth={150}
+                                originalGuild={originalGuild}
+                                isInDeletionArea={true}
+                            />
+                        );
+                    })}
                 </div>
             </div>
         </div>

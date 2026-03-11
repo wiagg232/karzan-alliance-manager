@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Copy, Trash2, MoveHorizontal, Palette, ArrowLeft, Lock, Unlock } from 'lucide-react';
+import { Copy, Trash2, MoveHorizontal, Palette, ArrowLeft, Lock, Unlock, Crown, Shield, User } from 'lucide-react';
 import { useMemberBoardStore } from '../store/useMemberBoardStore';
 import type { Guild, Member } from '@entities/member/types';
 
@@ -9,6 +9,7 @@ type Props = {
     contextMenuPosition?: { x: number; y: number } | null;
     onCloseContextMenu?: () => void;
     originalGuild?: Guild;
+    isInDeletionArea?: boolean;
 };
 
 const COLORS = [
@@ -22,19 +23,32 @@ const COLORS = [
     { id: 'pink', bg: 'bg-pink-700', buttonBg: 'bg-pink-700', border: 'border-pink-500', buttonBorder: 'border-pink-500', hover: 'hover:bg-pink-600', name: '粉色' },
 ];
 
-export default function MemberCardContextMenu({ member, contextMenuPosition, onCloseContextMenu, originalGuild }: Props) {
+export default function MemberCardContextMenu({ member, contextMenuPosition, onCloseContextMenu, originalGuild, isInDeletionArea }: Props) {
     const { stagingMembers, duplicateMember, deleteMember, moveMember, localGuilds, updateMember } = useMemberBoardStore();
     const [showContextMenu, setShowContextMenu] = useState(false);
     const [showGuildMenu, setShowGuildMenu] = useState(false);
     const [showColorMenu, setShowColorMenu] = useState(false);
+    const [showRoleMenu, setShowRoleMenu] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
         if (contextMenuPosition) {
-            setMenuPosition(contextMenuPosition);
+            const menuHeight = 400; // Approximate max height
+            let { x, y } = contextMenuPosition;
+            
+            // Adjust Y if menu would go off bottom of screen
+            if (y + menuHeight > window.innerHeight) {
+                y = window.innerHeight - menuHeight - 10; // 10px buffer
+            }
+            
+            // Ensure Y is not negative
+            if (y < 0) y = 0;
+
+            setMenuPosition({ x, y });
             setShowContextMenu(true);
             setShowGuildMenu(false);
             setShowColorMenu(false);
+            setShowRoleMenu(false);
         }
     }, [contextMenuPosition]);
 
@@ -52,7 +66,7 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
             <Popover.Root open={showContextMenu} onOpenChange={handleOpenChange}>
                 <Popover.Portal>
                     <Popover.Content
-                        className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 z-[10000] min-w-[160px]"
+                        className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 z-[10000] min-w-[160px] max-h-[400px] overflow-y-auto"
                         sideOffset={5}
                         align="start"
                         style={{
@@ -61,6 +75,10 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                             left: `${menuPosition.x}px`,
                         }}
                     >
+                        <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-700 mb-1 truncate">
+                            {member.name}
+                        </div>
+
                         <button
                             onClick={() => {
                                 updateMember(member.id!, { isReserved: !isReserved });
@@ -72,11 +90,19 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                             {isReserved ? '移除保留席' : '設為保留席'}
                         </button>
 
+                        <button
+                            disabled={isReserved}
+                            onClick={() => { setShowRoleMenu(!showRoleMenu); setShowGuildMenu(false); setShowColorMenu(false); }}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 text-gray-200 cursor-pointer'}`}
+                        >
+                            <Crown size={14} /> 切換身分
+                        </button>
+
                         <div className="h-px bg-gray-700 my-1" />
 
                         <button
                             disabled={isReserved}
-                            onClick={() => { setShowColorMenu(!showColorMenu); setShowGuildMenu(false); }}
+                            onClick={() => { setShowColorMenu(!showColorMenu); setShowGuildMenu(false); setShowRoleMenu(false); }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 text-gray-200 cursor-pointer'}`}
                         >
                             <Palette size={14} /> 標記顏色
@@ -90,7 +116,7 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         </button>
                         <button
                             disabled={isReserved}
-                            onClick={() => { setShowGuildMenu(!showGuildMenu); setShowColorMenu(false); }}
+                            onClick={() => { setShowGuildMenu(!showGuildMenu); setShowColorMenu(false); setShowRoleMenu(false); }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-indigo-900/50 text-indigo-300 cursor-pointer'}`}
                         >
                             <MoveHorizontal size={14} /> 移動到其他公會
@@ -103,7 +129,7 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                             <MoveHorizontal size={14} /> 加入暫存區
                         </button>}
 
-                        {originalGuild && member.guildId !== originalGuild.id && (
+                        {originalGuild && (isInDeletionArea || member.guildId !== originalGuild.id) && (
                             <button
                                 disabled={isReserved}
                                 onClick={() => {
@@ -117,13 +143,15 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                             </button>
                         )}
 
-                        <button
-                            disabled={isReserved}
-                            onClick={() => { deleteMember(member.id!); setShowContextMenu(false); }}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-red-900/50 text-red-300 cursor-pointer'}`}
-                        >
-                            <Trash2 size={14} /> 刪除
-                        </button>
+                        {!isInDeletionArea && (
+                            <button
+                                disabled={isReserved}
+                                onClick={() => { deleteMember(member.id!); setShowContextMenu(false); }}
+                                className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-red-900/50 text-red-300 cursor-pointer'}`}
+                            >
+                                <Trash2 size={14} /> 刪除
+                            </button>
+                        )}
 
 
                     </Popover.Content>
@@ -198,6 +226,54 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                                 className={`w-6 h-6 rounded-full border ${color.buttonBg} ${color.buttonBorder} hover:scale-110 transition-transform`}
                             />
                         ))}
+                    </Popover.Content>
+                </Popover.Portal>
+            </Popover.Root>
+
+            {/* 身分子選單 */}
+            <Popover.Root open={showRoleMenu} onOpenChange={setShowRoleMenu}>
+                <Popover.Portal>
+                    <Popover.Content
+                        className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 z-[10001] min-w-[120px]"
+                        side="right"
+                        align="start"
+                        sideOffset={5}
+                        style={{
+                            position: 'fixed',
+                            top: `${menuPosition.y}px`,
+                            left: `${menuPosition.x + 160}px`,
+                        }}
+                    >
+                        <button
+                            onClick={() => {
+                                updateMember(member.id!, { role: 'leader' });
+                                setShowRoleMenu(false);
+                                setShowContextMenu(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'leader' ? 'text-yellow-400' : 'text-gray-200 hover:bg-gray-800'}`}
+                        >
+                            <Crown size={14} /> 會長
+                        </button>
+                        <button
+                            onClick={() => {
+                                updateMember(member.id!, { role: 'coleader' });
+                                setShowRoleMenu(false);
+                                setShowContextMenu(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'coleader' ? 'text-purple-400' : 'text-gray-200 hover:bg-gray-800'}`}
+                        >
+                            <Shield size={14} /> 副會長
+                        </button>
+                        <button
+                            onClick={() => {
+                                updateMember(member.id!, { role: 'member' });
+                                setShowRoleMenu(false);
+                                setShowContextMenu(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'member' ? 'text-gray-400' : 'text-gray-200 hover:bg-gray-800'}`}
+                        >
+                            <User size={14} /> 成員
+                        </button>
                     </Popover.Content>
                 </Popover.Portal>
             </Popover.Root>

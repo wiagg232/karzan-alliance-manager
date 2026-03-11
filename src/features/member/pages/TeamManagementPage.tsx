@@ -14,8 +14,8 @@ export default function TeamManagementPage() {
     const guilds = Object.values(db.guilds);
 
     return (
-        <div className="bg-stone-100 dark:bg-stone-900 flex flex-col">
-            <main className="flex-1 mx-auto px-4 py-8">
+        <div className="bg-stone-100 dark:bg-stone-900 flex flex-col h-screen overflow-hidden">
+            <main className="flex-1 mx-auto px-4 py-8 w-full h-full overflow-hidden">
                 <MemberBoard initialMembers={members} initialGuilds={guilds} onSave={fetchAllMembers} />
             </main>
         </div>

@@ -1,5 +1,5 @@
 // src/components/MemberBoard/MemberBoard.tsx
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useMemberBoardStore } from './store/useMemberBoardStore';
 import { buildTieredData } from './utils/dataUtils';
@@ -48,7 +48,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
         }
     };
 
-    const tieredData: TieredData[] = buildTieredData(localMembers, initialGuilds);
+    const tieredData: TieredData[] = useMemo(() => buildTieredData(localMembers, initialGuilds), [localMembers, initialGuilds]);
 
     // ==================== 熱鍵 ====================
     useEffect(() => {

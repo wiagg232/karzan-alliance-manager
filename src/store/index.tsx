@@ -366,7 +366,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
   // Function to fetch members for a specific guild
-  const fetchMembers = async (guildId: string, columns: string = 'id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note)') => {
+  const fetchMembers = async (guildId: string, columns: string = 'id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, "isReserved", friend_group)') => {
     if (isOffline) return;
 
     // Check if we already have members for this guild
@@ -395,9 +395,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newMembers = data.reduce((acc, member) => {
       const camelMember = toCamel<any>(member);
       const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
+      // member_notes keys are in snake_case since toCamel uses { deep: false }
+      // Exception: "isReserved" is camelCase in the database due to quoting
+      const note = memberNotes?.note || '';
+      const isReserved = memberNotes?.isReserved || memberNotes?.is_reserved || false;
+      const friendGroup = memberNotes?.friend_group || '';
       const mappedMember: Member = {
         ...camelMember,
-        note: memberNotes?.note || '',
+        note,
+        isReserved,
+        friendGroup,
       };
       delete (mappedMember as any).memberNotes;
       return { ...acc, [mappedMember.id!]: mappedMember };
@@ -422,7 +429,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchAllMembers = async () => {
     if (isOffline) return;
 
-    const { data, error } = await supabase.from('members').select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note)');
+    const { data, error } = await supabase.from('members').select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, "isReserved", friend_group)');
 
     if (error) {
       console.error("Error fetching all members:", error);
@@ -432,9 +439,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const allMembers: Record<string, Member> = data.reduce((acc, member) => {
       const camelMember = toCamel<any>(member);
       const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
+      // member_notes keys are in snake_case since toCamel uses { deep: false }
+      // Exception: "isReserved" is camelCase in the database due to quoting
+      const note = memberNotes?.note || '';
+      const isReserved = memberNotes?.isReserved || memberNotes?.is_reserved || false;
+      const friendGroup = memberNotes?.friend_group || '';
       const mappedMember: Member = {
         ...camelMember,
-        note: memberNotes?.note || '',
+        note,
+        isReserved,
+        friendGroup,
       };
       delete (mappedMember as any).memberNotes;
       return { ...acc, [mappedMember.id!]: mappedMember };
@@ -450,7 +464,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let queryBuilder = supabase
       .from('members')
-      .select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note)', { count: 'exact' })
+      .select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, "isReserved", friend_group)', { count: 'exact' })
       .ilike('name', `%${query}%`)
       .order('status', { ascending: true }) // active comes before archived
       .order('name', { ascending: true })
@@ -471,9 +485,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       data: (data as any[]).map(m => {
         const camelMember = toCamel<any>(m);
         const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
+      // member_notes keys are in snake_case since toCamel uses { deep: false }
+      // Exception: "isReserved" is camelCase in the database due to quoting
+      const note = memberNotes?.note || '';
+      const isReserved = memberNotes?.isReserved || memberNotes?.is_reserved || false;
+      const friendGroup = memberNotes?.friend_group || '';
         const mappedMember: Member = {
           ...camelMember,
-          note: memberNotes?.note || '',
+          note,
+          isReserved,
+          friendGroup,
         };
         delete (mappedMember as any).memberNotes;
         return mappedMember;
@@ -537,7 +558,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addMember = async (guildId: string, name: string, role: Role = 'member', note: string = '') => {
+  const addMember = async (guildId: string, name: string, role: Role = 'member', note: string = '', isReserved: boolean = false, friendGroup: string = '') => {
     // Check if member already exists in active status
     const { data: activeData, error: activeError } = await supabase
       .from('members')
@@ -593,10 +614,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    if (note) {
+    if (note || isReserved || friendGroup) {
       await supabase
         .from('member_notes')
-        .insert({ member_id: newMemberId, note });
+        .insert({ member_id: newMemberId, note, isReserved, friend_group: friendGroup });
     }
 
     if (data) {
@@ -640,11 +661,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateMember = async (memberId: string, data: Partial<Member>) => {
     const now = Date.now();
-    const { note, ...memberData } = data;
+    const { note, isReserved, friendGroup, ...memberData } = data;
     
     const { error } = await supabaseUpdate('members', { ...memberData, updatedAt: now }, { id: memberId });
 
-    if (note !== undefined) {
+    // Check if any member_notes fields are being updated
+    const hasMemberNotesUpdate = note !== undefined || isReserved !== undefined || friendGroup !== undefined;
+
+    if (hasMemberNotesUpdate) {
       const { data: existingNote, error: checkError } = await supabase
         .from('member_notes')
         .select('uid')
@@ -655,17 +679,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Error checking existing note:', checkError);
       }
 
+      const updateData: any = {};
+      if (note !== undefined) updateData.note = note;
+      if (isReserved !== undefined) updateData.isReserved = isReserved;
+      if (friendGroup !== undefined) updateData.friend_group = friendGroup;
+
       if (existingNote) {
         const { error: updateNoteError } = await supabase
           .from('member_notes')
-          .update({ note })
+          .update(updateData)
           .eq('member_id', memberId);
-        if (updateNoteError) console.error('Error updating note:', updateNoteError);
+        if (updateNoteError) console.error('Error updating member_notes:', updateNoteError);
       } else {
         const { error: insertNoteError } = await supabase
           .from('member_notes')
-          .insert({ member_id: memberId, note });
-        if (insertNoteError) console.error('Error inserting note:', insertNoteError);
+          .insert({ member_id: memberId, ...updateData });
+        if (insertNoteError) console.error('Error inserting member_notes:', insertNoteError);
       }
     }
 

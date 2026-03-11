@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import type { Member, Guild } from '@entities/member/types';
+import { supabase } from '@/shared/api/supabase';
 
 type Store = {
     localMembers: Member[];
@@ -115,6 +116,9 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             stagingMembers: state.stagingMembers.map((m) =>
                 m.id === id ? { ...m, ...updates } : m
             ),
+            deletedMembers: state.deletedMembers.map((m) =>
+                m.id === id ? { ...m, ...updates } : m
+            ),
             history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
             redoStack: [], // 新操作清空 redo
         })),
@@ -153,7 +157,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
 
     moveMember: (id, newGuildId) =>
         set((state) => {
-            const member = state.localMembers.find(m => m.id === id) || state.stagingMembers.find(m => m.id === id);
+            const member = state.localMembers.find(m => m.id === id) || state.stagingMembers.find(m => m.id === id) || state.deletedMembers.find(m => m.id === id);
             if (!member || member.isReserved) return {};
 
             const initialState = state.initialMemberStates[id];
@@ -172,15 +176,18 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
 
             const updatedMember = { ...member, guildId: newGuildId, note: newNote, updatedAt: Date.now() };
 
-            // Remove from staging if it was there
+            // Remove from all lists
             const newStaging = state.stagingMembers.filter(m => m.id !== id);
-
-            // Remove from old position in localMembers
             const filteredLocal = state.localMembers.filter(m => m.id !== id);
+            const filteredDeleted = state.deletedMembers.filter(m => m.id !== id);
 
             let newLocal;
-            if (member.guildId !== newGuildId) {
-                // Moving to different guild: append to end
+            // If coming from deletedMembers, member.guildId might be the original guild or 'staging'
+            // We should just append to end if moving to a different guild, or keep position if moving within same guild
+            // But since it's coming from deleted area, it's not in localMembers, so we can't keep position.
+            // We'll append to end.
+            if (member.guildId !== newGuildId || state.deletedMembers.some(m => m.id === id)) {
+                // Moving to different guild OR coming from deleted area: append to end
                 newLocal = [...filteredLocal, updatedMember];
             } else {
                 // Moving within same guild: keep original position
@@ -192,6 +199,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             return {
                 localMembers: newLocal,
                 stagingMembers: newStaging,
+                deletedMembers: filteredDeleted,
                 history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [], // 新操作清空 redo
             };
@@ -199,7 +207,8 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
 
     moveToStaging: (id) =>
         set((state) => {
-            const member = state.localMembers.find(m => m.id === id);
+            // Check localMembers, stagingMembers, and deletedMembers
+            const member = state.localMembers.find(m => m.id === id) || state.stagingMembers.find(m => m.id === id) || state.deletedMembers.find(m => m.id === id);
             if (!member || member.isReserved) return {};
 
             const updatedMember = { ...member, guildId: 'staging', updatedAt: Date.now() };
@@ -207,6 +216,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             return {
                 localMembers: state.localMembers.filter(m => m.id !== id),
                 stagingMembers: [...state.stagingMembers, updatedMember],
+                deletedMembers: state.deletedMembers.filter(m => m.id !== id),
                 history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [], // 新操作清空 redo
             };
@@ -346,8 +356,9 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             // 先把所有選取的成員從原本位置移除（保證唯一性）
             let newLocalMembers = state.localMembers.filter(m => !selectedIds.has(m.id!));
             let newStagingMembers = state.stagingMembers.filter(m => !selectedIds.has(m.id!));
+            let newDeletedMembers = state.deletedMembers.filter(m => !selectedIds.has(m.id!));
 
-            const membersToMove = [...state.localMembers, ...state.stagingMembers].filter(m => selectedIds.has(m.id!));
+            const membersToMove = [...state.localMembers, ...state.stagingMembers, ...state.deletedMembers].filter(m => selectedIds.has(m.id!));
 
             let updated: Member[];
             if (targetGuildId === 'staging') {
@@ -361,6 +372,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             return {
                 localMembers: newLocalMembers,
                 stagingMembers: newStagingMembers,
+                deletedMembers: newDeletedMembers,
                 selectedIds: new Set(),
                 history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [],
@@ -398,7 +410,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
 
     // 儲存到資料庫
     saveToDatabase: async () => {
-        const { localMembers, initialMemberStates, localGuilds, stagingMembers } = get();
+        const { localMembers, initialMemberStates, localGuilds, stagingMembers, deletedMembers } = get();
 
         if (stagingMembers.length > 0) {
             alert('暫存區還有成員未分配公會，請先將他們拖曳至公會中再儲存。');
@@ -415,7 +427,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
 
             const { supabaseUpsert } = await import('@/shared/api/supabase');
 
-            // Pick fields to save
+            // Pick fields to save (separate member data and member_notes data)
             const membersToSave = finalMembers.map(m => ({
                 id: m.id,
                 name: m.name,
@@ -423,20 +435,85 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
                 role: m.role,
                 records: m.records,
                 exclusiveWeapons: m.exclusiveWeapons,
-                note: m.note,
                 color: m.color,
                 totalScore: m.totalScore,
                 updatedAt: m.updatedAt,
             }));
 
-            const { error } = await supabaseUpsert('members', membersToSave);
+            const memberNotesToSave = finalMembers.map(m => ({
+                member_id: m.id,
+                note: m.note,
+                isReserved: m.isReserved || false,
+                friend_group: m.friendGroup,
+            }));
 
-            if (error) {
-                console.error('儲存失敗', error);
-                alert('儲存失敗：' + error.message);
+            // Upsert to members table
+            const { error: memberError } = await supabaseUpsert('members', membersToSave);
+
+            if (memberError) {
+                console.error('儲存成員失敗', memberError);
+                alert('儲存成員失敗：' + memberError.message);
                 return;
             }
 
+            // Upsert to member_notes table
+            for (const noteData of memberNotesToSave) {
+                const { error: noteError } = await supabase
+                    .from('member_notes')
+                    .upsert(noteData, { onConflict: 'member_id' });
+
+                if (noteError) {
+                    console.error('儲存備註失敗', noteError);
+                    alert('儲存備註失敗：' + noteError.message);
+                    return;
+                }
+            }
+
+            // Handle archived members (deletedMembers)
+            let archiveReason = '';
+            if (deletedMembers.length > 0) {
+                archiveReason = prompt('請輸入刪除區成員的封存訊息：', '') || '';
+                
+                for (const member of deletedMembers) {
+                    if (!member.id) continue;
+                    
+                    // Step 1: Insert history
+                    const { error: historyError } = await supabase
+                        .from('members_archive_history')
+                        .insert({
+                            member_id: member.id,
+                            from_guild_id: member.guildId, // Use current guildId as source
+                            archive_reason: archiveReason
+                        });
+
+                    if (historyError) {
+                        console.error('Failed to insert archive history:', historyError);
+                        continue;
+                    }
+
+                    // Step 2: Update member status to archived
+                    const { error: memberError } = await supabase
+                        .from('members')
+                        .update({ status: 'archived', guild_id: null })
+                        .eq('id', member.id);
+
+                    if (memberError) {
+                        console.error('Failed to update member status:', memberError);
+                        continue;
+                    }
+
+                    // Step 3: Update archive_remark in member_notes
+                    const { error: noteError } = await supabase
+                        .from('member_notes')
+                        .update({ archive_remark: archiveReason })
+                        .eq('member_id', member.id);
+
+                    if (noteError) {
+                        console.error('Failed to update archive remark:', noteError);
+                        // Don't continue, just log error
+                    }
+                }
+            }
 
             // Identify moved members and group by SOURCE guild
             const movedGroups: Record<string, string[]> = {};
@@ -464,6 +541,16 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
                 guildName,
                 members
             }));
+
+            // Add archived members to API payload if there are any
+            if (deletedMembers.length > 0) {
+                const archivedMemberNames = deletedMembers.map(m => m.name).filter(Boolean);
+                (apiPayload as any[]).push({
+                    guildName: '封存區',
+                    members: archivedMemberNames,
+                    archiveReason: archiveReason
+                });
+            }
 
             if (apiPayload.length > 0) {
                 // Generate local preview message immediately for testing/fallback

@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import MemberCard from './MemberCard/MemberCard';
 import type { Guild, Member } from '@entities/member/types';
 import { useMemberBoardStore } from './store/useMemberBoardStore';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 type GuildWithMembers = Guild & { members: Member[] };
@@ -61,36 +61,43 @@ export default function GuildSection({ guild, cardWidth }: Props) {
     };
 
     // 排序：先按角色優先級
-    const sortedMembers = [...(guild.members || [])].sort((a, b) => {
-        const getPriority = (role: string) => {
-            if (role === 'leader') return 1;
-            if (role === 'coleader') return 2;
-            return 999;
-        };
+    const sortedMembers = useMemo(() => {
+        return [...(guild.members || [])].sort((a, b) => {
+            const getPriority = (role: string) => {
+                if (role === 'leader') return 1;
+                if (role === 'coleader') return 2;
+                return 999;
+            };
 
-        const priA = getPriority(a.role);
-        const priB = getPriority(b.role);
+            const priA = getPriority(a.role);
+            const priB = getPriority(b.role);
 
-        if (priA !== priB) return priA - priB;
+            if (priA !== priB) return priA - priB;
 
-        return (a.updatedAt ?? 0) - (b.updatedAt ?? 0);
-    });
+            return (a.updatedAt ?? 0) - (b.updatedAt ?? 0);
+        });
+    }, [guild.members]);
 
     // 補足到 30 個位置
-    const displaySlots = [...sortedMembers];
-    while (displaySlots.length < 30) {
-        displaySlots.push({ id: `empty-${guild.id}-${displaySlots.length}` } as any);
-    }
+    const displaySlots = useMemo(() => {
+        const slots = [...sortedMembers];
+        while (slots.length < 30) {
+            slots.push({ id: `empty-${guild.id}-${slots.length}` } as any);
+        }
+        return slots;
+    }, [sortedMembers, guild.id]);
 
     // 公會總分小計
-    const guildTotalScore = (guild.members || []).reduce((sum, m) => sum + (m.totalScore ?? 0), 0);
+    const guildTotalScore = useMemo(() => {
+        return (guild.members || []).reduce((sum, m) => sum + (m.totalScore ?? 0), 0);
+    }, [guild.members]);
 
     return (
         <div
             ref={containerRef}
             onClick={handleGuildClick}
             className={`
-        guild-section relative bg-gray-900 rounded-xl border overflow-hidden flex flex-col shadow-sm flex-shrink-0 transition-all duration-200
+        guild-section relative bg-gray-900 rounded-xl border overflow-hidden flex flex-col shadow-sm flex-shrink-0 transition-all duration-200 select-none
         ${isMultiSelectMode && selectedIds.size > 0 ? 'cursor-pointer ring-2 ring-indigo-500' : 'cursor-default'}
         border-gray-700
       `}

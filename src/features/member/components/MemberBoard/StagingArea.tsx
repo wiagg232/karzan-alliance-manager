@@ -26,8 +26,8 @@ export default function StagingArea() {
         <div
             onClick={handleStagingClick}
             className={`
-                staging-area fixed top-24 left-8 w-56 bg-gray-900/90 backdrop-blur-md border-2 rounded-2xl shadow-2xl transition-all duration-300 z-[100] flex flex-col
-               
+                staging-area fixed top-24 left-8 w-40 bg-gray-900/90 backdrop-blur-md border-2 rounded-2xl shadow-2xl transition-all duration-300 z-[100] flex flex-col select-none
+                
                 ${isMultiSelectMode && selectedIds.size > 0 ? 'cursor-pointer ring-2 ring-indigo-500' : 'cursor-default'}
                 ${stagingMembers.length > 0 ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-4 hover:opacity-100'}
             `}
@@ -61,7 +61,7 @@ export default function StagingArea() {
                             isSelected={selectedIds.has(member.id!)}
                             isMultiSelectMode={isMultiSelectMode}
                             onToggleSelect={() => toggleSelect(member.id!)}
-                            fixedWidth={200}
+                            fixedWidth={150}
                         />
                     ))}
                 </div>
