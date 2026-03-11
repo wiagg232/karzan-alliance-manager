@@ -9,6 +9,7 @@ export const getDefaultRoles = (pageId: string): ('member' | 'manager' | 'admin'
     case 'toolbox': return ['manager', 'admin', 'creator'];
     case 'member_board': return ['member', 'manager', 'admin', 'creator'];
     case 'guild_raid_manager': return ['manager', 'admin', 'creator'];
+    case 'admin_settings': return ['admin', 'creator'];
     default: return ['creator', 'admin'];
   }
 };

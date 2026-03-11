@@ -34,7 +34,7 @@ export default function AppRoutes() {
                     </ProtectedRoute>
                 } />
                 <Route path="/admin" element={
-                    <ProtectedRoute allowedRoles={['admin', 'creator', 'manager']}>
+                    <ProtectedRoute pageId="admin_settings">
                         <AdminDashboard />
                     </ProtectedRoute>
                 } />

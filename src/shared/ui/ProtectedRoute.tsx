@@ -31,8 +31,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles,
 
   const userRole = db.users[currentUser]?.role;
 
-  console.log(`[ProtectedRoute] Checking access for page: ${pageId}, user: ${currentUser}, role: ${userRole}`);
-
   // Check static allowedRoles if provided
   if (allowedRoles && (!userRole || !allowedRoles.includes(userRole))) {
     return <UnauthorizedView />;

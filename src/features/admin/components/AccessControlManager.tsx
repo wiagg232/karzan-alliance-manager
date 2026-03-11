@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '@/store';
-import { Lock, Check, Users, Mail, Gamepad2, Trophy, AlertCircle, BookUser, Wrench, Save, RotateCcw } from 'lucide-react';
+import { Lock, Check, Users, Mail, Gamepad2, Trophy, AlertCircle, BookUser, Wrench, Save, RotateCcw, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function AccessControlManager() {
@@ -21,6 +21,7 @@ export default function AccessControlManager() {
     { id: 'guild_raid_manager', label: t('header.guild_raid_manager', '公會戰管理'), icon: <Trophy className="w-5 h-5" /> },
     { id: 'member_board', label: t('header.member_board', "Team Assign Board"), icon: <BookUser className="w-5 h-5" /> },
     { id: 'toolbox', label: t('header.toolbox_title', '小工具'), icon: <Wrench className="w-5 h-5" /> },
+    { id: 'admin_settings', label: t('header.admin_settings', '後台設定'), icon: <Settings className="w-5 h-5" /> },
   ];
 
   const getDefaultRoles = (pageId: string): ('member' | 'manager' | 'admin' | 'creator')[] => {
@@ -32,6 +33,7 @@ export default function AccessControlManager() {
       case 'guild_raid_manager': return ['manager', 'admin', 'creator'];
       case 'member_board': return ['manager', 'admin', 'creator'];
       case 'toolbox': return ['manager', 'admin', 'creator'];
+      case 'admin_settings': return ['admin', 'creator'];
       default: return ['creator', 'admin'];
     }
   };
