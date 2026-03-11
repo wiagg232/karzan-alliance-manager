@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import type { Member, Guild } from '@entities/member/types';
+import type { Member, Guild, Role } from '@entities/member/types';
 import { supabase } from '@/shared/api/supabase';
 
 type Store = {
@@ -33,6 +33,9 @@ type Store = {
     batchDelete: () => void;
     batchDuplicate: () => void;
     batchMoveToGuild: (guildId: string) => void;
+    batchUpdateRole: (role: Role) => void;
+    batchMoveToStaging: () => void;
+    batchToggleReserved: () => void;
 
     // 多選
     toggleSelect: (id: string) => void;
@@ -376,6 +379,56 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
                 selectedIds: new Set(),
                 history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
                 redoStack: [],
+            };
+        }),
+
+    batchUpdateRole: (role) =>
+        set((state) => ({
+            localMembers: state.localMembers.map((m) =>
+                state.selectedIds.has(m.id!) ? { ...m, role, updatedAt: Date.now() } : m
+            ),
+            stagingMembers: state.stagingMembers.map((m) =>
+                state.selectedIds.has(m.id!) ? { ...m, role, updatedAt: Date.now() } : m
+            ),
+            deletedMembers: state.deletedMembers.map((m) =>
+                state.selectedIds.has(m.id!) ? { ...m, role, updatedAt: Date.now() } : m
+            ),
+            history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
+        })),
+
+    batchMoveToStaging: () =>
+        set((state) => {
+            const membersToMove = [...state.localMembers, ...state.deletedMembers].filter(m => state.selectedIds.has(m.id!));
+            const updatedMembers = membersToMove.map(m => ({ ...m, guildId: 'staging', updatedAt: Date.now() }));
+
+            return {
+                localMembers: state.localMembers.filter(m => !state.selectedIds.has(m.id!)),
+                stagingMembers: [...state.stagingMembers, ...updatedMembers],
+                deletedMembers: state.deletedMembers.filter(m => !state.selectedIds.has(m.id!)),
+                selectedIds: new Set(),
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
+                redoStack: [],
+            };
+        }),
+
+    batchToggleReserved: () =>
+        set((state) => {
+            const anyReserved = [...state.localMembers, ...state.stagingMembers, ...state.deletedMembers]
+                .some(m => state.selectedIds.has(m.id!) && m.isReserved);
+            
+            const newReservedValue = !anyReserved;
+
+            return {
+                localMembers: state.localMembers.map((m) =>
+                    state.selectedIds.has(m.id!) ? { ...m, isReserved: newReservedValue, updatedAt: Date.now() } : m
+                ),
+                stagingMembers: state.stagingMembers.map((m) =>
+                    state.selectedIds.has(m.id!) ? { ...m, isReserved: newReservedValue, updatedAt: Date.now() } : m
+                ),
+                deletedMembers: state.deletedMembers.map((m) =>
+                    state.selectedIds.has(m.id!) ? { ...m, isReserved: newReservedValue, updatedAt: Date.now() } : m
+                ),
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
             };
         }),
 

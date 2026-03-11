@@ -24,7 +24,21 @@ const COLORS = [
 ];
 
 export default function MemberCardContextMenu({ member, contextMenuPosition, onCloseContextMenu, originalGuild, isInDeletionArea }: Props) {
-    const { stagingMembers, duplicateMember, deleteMember, moveMember, localGuilds, updateMember } = useMemberBoardStore();
+    const { 
+        stagingMembers, 
+        duplicateMember, 
+        deleteMember, 
+        moveMember, 
+        localGuilds, 
+        updateMember, 
+        selectedIds, 
+        isMultiSelectMode,
+        batchUpdateColor,
+        batchUpdateRole,
+        batchMoveToStaging,
+        batchToggleReserved,
+        batchDelete
+    } = useMemberBoardStore();
     const [showContextMenu, setShowContextMenu] = useState(false);
     const [showGuildMenu, setShowGuildMenu] = useState(false);
     const [showColorMenu, setShowColorMenu] = useState(false);
@@ -81,7 +95,11 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
 
                         <button
                             onClick={() => {
-                                updateMember(member.id!, { isReserved: !isReserved });
+                                if (isMultiSelectMode && selectedIds.size > 0) {
+                                    batchToggleReserved();
+                                } else {
+                                    updateMember(member.id!, { isReserved: !isReserved });
+                                }
                                 setShowContextMenu(false);
                             }}
                             className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-800 flex items-center gap-2 cursor-pointer ${isReserved ? 'text-yellow-400' : 'text-gray-200'}`}
@@ -123,7 +141,14 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         </button>
                         {stagingMembers.every((stagingMember) => stagingMember.id != member.id) && <button
                             disabled={isReserved}
-                            onClick={() => { useMemberBoardStore.getState().moveToStaging(member.id!); setShowContextMenu(false); }}
+                            onClick={() => { 
+                                if (isMultiSelectMode && selectedIds.size > 0) {
+                                    batchMoveToStaging();
+                                } else {
+                                    useMemberBoardStore.getState().moveToStaging(member.id!);
+                                }
+                                setShowContextMenu(false); 
+                            }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-indigo-900/50 text-indigo-300 cursor-pointer'}`}
                         >
                             <MoveHorizontal size={14} /> 加入暫存區
@@ -146,7 +171,14 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         {!isInDeletionArea && (
                             <button
                                 disabled={isReserved}
-                                onClick={() => { deleteMember(member.id!); setShowContextMenu(false); }}
+                                onClick={() => { 
+                                    if (isMultiSelectMode && selectedIds.size > 0) {
+                                        batchDelete();
+                                    } else {
+                                        deleteMember(member.id!);
+                                    }
+                                    setShowContextMenu(false); 
+                                }}
                                 className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-red-900/50 text-red-300 cursor-pointer'}`}
                             >
                                 <Trash2 size={14} /> 刪除
@@ -218,7 +250,11 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                             <button
                                 key={color.id}
                                 onClick={() => {
-                                    updateMember(member.id!, { color: color.id === 'default' ? undefined : color.id });
+                                    if (isMultiSelectMode && selectedIds.size > 0) {
+                                        batchUpdateColor(color.id === 'default' ? undefined : color.id);
+                                    } else {
+                                        updateMember(member.id!, { color: color.id === 'default' ? undefined : color.id });
+                                    }
                                     setShowColorMenu(false);
                                     setShowContextMenu(false);
                                 }}
@@ -246,7 +282,11 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                     >
                         <button
                             onClick={() => {
-                                updateMember(member.id!, { role: 'leader' });
+                                if (isMultiSelectMode && selectedIds.size > 0) {
+                                    batchUpdateRole('leader');
+                                } else {
+                                    updateMember(member.id!, { role: 'leader' });
+                                }
                                 setShowRoleMenu(false);
                                 setShowContextMenu(false);
                             }}
@@ -256,7 +296,11 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         </button>
                         <button
                             onClick={() => {
-                                updateMember(member.id!, { role: 'coleader' });
+                                if (isMultiSelectMode && selectedIds.size > 0) {
+                                    batchUpdateRole('coleader');
+                                } else {
+                                    updateMember(member.id!, { role: 'coleader' });
+                                }
                                 setShowRoleMenu(false);
                                 setShowContextMenu(false);
                             }}
@@ -266,7 +310,11 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         </button>
                         <button
                             onClick={() => {
-                                updateMember(member.id!, { role: 'member' });
+                                if (isMultiSelectMode && selectedIds.size > 0) {
+                                    batchUpdateRole('member');
+                                } else {
+                                    updateMember(member.id!, { role: 'member' });
+                                }
                                 setShowRoleMenu(false);
                                 setShowContextMenu(false);
                             }}
