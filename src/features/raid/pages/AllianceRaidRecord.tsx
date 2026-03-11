@@ -22,7 +22,7 @@ interface GuildRaidRecord {
 }
 
 export default function AllianceRaidRecord() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['raid', 'translation']);
   const { db, currentUser } = useAppContext();
 
   const [seasons, setSeasons] = useState<RaidSeason[]>([]);

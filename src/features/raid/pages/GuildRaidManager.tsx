@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
-import { Trophy, Save, AlertCircle, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trophy, Save, AlertCircle, Plus, ChevronDown, ChevronRight, Archive } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { logEvent } from '@/analytics';
 import GuildRaidTable from '../components/GuildRaidTable';
@@ -12,6 +12,7 @@ interface RaidSeason {
   season_number: number;
   period_text: string;
   description: string;
+  is_archived?: boolean;
 }
 
 interface MemberRaidRecord {
@@ -20,11 +21,12 @@ interface MemberRaidRecord {
   member_id: string;
   score: number;
   note: string;
+  season_note?: string;
 }
 
 export default function GuildRaidManager() {
-  const { t } = useTranslation();
-  const { db, currentUser } = useAppContext();
+  const { t } = useTranslation(['raid', 'translation']);
+  const { db, currentUser, updateMember } = useAppContext();
 
   const [seasons, setSeasons] = useState<RaidSeason[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
@@ -41,6 +43,8 @@ export default function GuildRaidManager() {
   
   const [sortConfig, setSortConfig] = useState<{ key: 'default' | 'score', order: 'asc' | 'desc' }>({ key: 'default', order: 'asc' });
   const [selectedMemberStats, setSelectedMemberStats] = useState<any>(null);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   const userRole = currentUser ? db.users[currentUser]?.role : null;
   const canManage = userRole === 'manager' || userRole === 'admin' || userRole === 'creator';
@@ -89,9 +93,10 @@ export default function GuildRaidManager() {
     try {
       const { data, error } = await supabase.from('raid_seasons').select('*').order('season_number', { ascending: false });
       if (error) throw error;
+      console.log('Fetched Seasons Data:', data);
       setSeasons(data || []);
       if (data && data.length > 0) {
-        setSelectedSeasonId(data[0].id);
+        setSelectedSeasonId(String(data[0].id));
       }
     } catch (err: any) {
       console.error('Error fetching seasons:', err);
@@ -150,6 +155,7 @@ export default function GuildRaidManager() {
       });
     } else {
       setSelectedGuildIds([guildId]);
+      setIsGuildSelectionOpen(false);
     }
   };
 
@@ -159,9 +165,9 @@ export default function GuildRaidManager() {
     }
   }, [isComparisonMode]);
 
-  const handleRecordChange = (memberId: string, field: 'score' | 'note', value: string | number) => {
+  const handleRecordChange = (memberId: string, field: 'score' | 'note' | 'season_note', value: string | number) => {
     setDraftRecords(prev => {
-      const existingRecord = prev[memberId] || records[memberId] || { season_id: selectedSeasonId, member_id: memberId, score: 0, note: '' };
+      const existingRecord = prev[memberId] || records[memberId] || { season_id: selectedSeasonId, member_id: memberId, score: 0, season_note: '' };
       
       let finalValue = value;
       if (field === 'score') {
@@ -172,6 +178,7 @@ export default function GuildRaidManager() {
         ...prev,
         [memberId]: {
           ...existingRecord,
+          note: prev[memberId]?.note ?? db.members[memberId]?.note ?? '',
           [field]: finalValue
         }
       };
@@ -187,16 +194,30 @@ export default function GuildRaidManager() {
 
     setSaving(true);
     try {
+      // Separate raid records and notes
+      const raidRecordsToSave = draftsToSave.map(d => {
+        const { note, ...rest } = d;
+        return rest;
+      });
+
       const { error } = await supabase
         .from('member_raid_records')
-        .upsert(draftsToSave, { onConflict: 'season_id, member_id' });
+        .upsert(raidRecordsToSave, { onConflict: 'season_id, member_id' });
 
       if (error) throw error;
 
+      // Update notes
+      for (const d of draftsToSave) {
+        const currentNote = db.members[d.member_id]?.note || '';
+        if (d.note !== undefined && d.note !== currentNote) {
+          await updateMember(d.member_id, { note: d.note });
+        }
+      }
+
       setRecords(prev => {
         const next = { ...prev };
-        draftsToSave.forEach(d => {
-          next[d.member_id] = d;
+        raidRecordsToSave.forEach(d => {
+          next[d.member_id] = { ...next[d.member_id], ...d } as MemberRaidRecord;
         });
         return next;
       });
@@ -258,6 +279,40 @@ export default function GuildRaidManager() {
     });
   };
 
+  const handleArchiveSeason = async () => {
+    if (!selectedSeasonId) return;
+    setArchiving(true);
+    try {
+      const { error } = await supabase
+        .from('raid_seasons')
+        .update({ is_archived: true })
+        .eq('id', selectedSeasonId);
+
+      if (error) throw error;
+
+      console.log('Successfully archived season in DB:', selectedSeasonId);
+      setSeasons(prev => prev.map(s => String(s.id) === String(selectedSeasonId).trim() ? { ...s, is_archived: true } : s));
+      setIsArchiveModalOpen(false);
+      logEvent('GuildRaidManager', 'Archive Season', `Season ID: ${selectedSeasonId}`);
+    } catch (err: any) {
+      console.error('Error archiving season:', err);
+      setError(err.message);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const selectedSeason = seasons.find(s => String(s.id) === String(selectedSeasonId).trim());
+  const isSelectedSeasonArchived = !!selectedSeason?.is_archived;
+
+  console.log('GuildRaidManager Debug:', {
+    selectedSeasonId,
+    selectedSeason,
+    isSelectedSeasonArchived,
+    seasonsCount: seasons.length,
+    seasonsIds: seasons.map(s => s.id)
+  });
+
   if (!canManage) {
     return (
       <div className="h-screen flex flex-col">
@@ -309,6 +364,19 @@ export default function GuildRaidManager() {
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">{t('alliance_raid.add_season', '新增賽季')}</span>
+            </button>
+
+            <button
+              onClick={() => setIsArchiveModalOpen(true)}
+              disabled={isSelectedSeasonArchived}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${
+                isSelectedSeasonArchived
+                  ? 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
+                  : 'bg-amber-600 text-white hover:bg-amber-700'
+              }`}
+            >
+              <Archive className="w-4 h-4" />
+              <span className="hidden sm:inline">{isSelectedSeasonArchived ? t('raid.season_archived', '已封存') : t('raid.archive_season', '封存賽季')}</span>
             </button>
 
             <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-800 px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 shadow-sm">
@@ -405,6 +473,8 @@ export default function GuildRaidManager() {
                 records={records}
                 draftRecords={draftRecords}
                 isComparisonMode={isComparisonMode}
+                isArchived={isSelectedSeasonArchived}
+                seasonId={selectedSeasonId}
                 loading={loading}
                 saving={saving}
                 onSort={handleSort}
@@ -424,6 +494,45 @@ export default function GuildRaidManager() {
         member={selectedMemberStats} 
         onClose={() => setSelectedMemberStats(null)} 
       />
+
+      {/* Archive Confirmation Modal */}
+      {isArchiveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-stone-200 dark:border-stone-700">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-stone-800 dark:text-stone-100 mb-2">
+                {t('raid.archive_season_confirm_title', '確認封存賽季？')}
+              </h3>
+              <p className="text-stone-600 dark:text-stone-400 mb-6">
+                {t('raid.archive_season_confirm_desc', '封存後，此賽季的成績將無法再被修改。您確定要封存嗎？')}
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setIsArchiveModalOpen(false)}
+                  className="px-4 py-2 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-lg transition-colors"
+                  disabled={archiving}
+                >
+                  {t('common.cancel', '取消')}
+                </button>
+                <button
+                  onClick={handleArchiveSeason}
+                  disabled={archiving}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {archiving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      {t('common.saving', '儲存中...')}
+                    </>
+                  ) : (
+                    t('raid.archive_season', '封存賽季')
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
