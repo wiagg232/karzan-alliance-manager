@@ -26,7 +26,7 @@ interface MemberRaidRecord {
 
 export default function GuildRaidManager() {
   const { t } = useTranslation(['raid', 'translation']);
-  const { db, currentUser, updateMember } = useAppContext();
+  const { db, currentUser, updateMember, fetchAllMembers } = useAppContext();
 
   const [seasons, setSeasons] = useState<RaidSeason[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
@@ -96,7 +96,6 @@ export default function GuildRaidManager() {
     try {
       const { data, error } = await supabase.from('raid_seasons').select('*').order('season_number', { ascending: false });
       if (error) throw error;
-      console.log('Fetched Seasons Data:', data);
       setSeasons(data || []);
       if (data && data.length > 0) {
         setSelectedSeasonId(String(data[0].id));
@@ -109,6 +108,7 @@ export default function GuildRaidManager() {
 
   useEffect(() => {
     fetchSeasons();
+    fetchAllMembers();
   }, []);
 
   const fetchRecords = async () => {
@@ -293,7 +293,6 @@ export default function GuildRaidManager() {
 
       if (error) throw error;
 
-      console.log('Successfully archived season in DB:', selectedSeasonId);
       setSeasons(prev => prev.map(s => String(s.id) === String(selectedSeasonId).trim() ? { ...s, is_archived: true } : s));
       setIsArchiveModalOpen(false);
       logEvent('GuildRaidManager', 'Archive Season', `Season ID: ${selectedSeasonId}`);
@@ -335,12 +334,11 @@ export default function GuildRaidManager() {
   const selectedSeason = seasons.find(s => String(s.id) === String(selectedSeasonId).trim());
   const isSelectedSeasonArchived = !!selectedSeason?.is_archived;
 
-  console.log('GuildRaidManager Debug:', {
-    selectedSeasonId,
-    selectedSeason,
-    isSelectedSeasonArchived,
+  console.log('[GuildRaidManager] Data State:', {
+    membersCount: Object.keys(db.members).length,
     seasonsCount: seasons.length,
-    seasonsIds: seasons.map(s => s.id)
+    selectedSeasonId,
+    isSelectedSeasonArchived
   });
 
   if (!canManage) {
