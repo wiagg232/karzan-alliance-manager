@@ -12,6 +12,7 @@ interface CalculationResult {
 interface ScoreCalculatorProps {
   label?: string;
   enableDefenseScore?: boolean;
+  noBorder?: boolean;
 }
 
 const ResultItem = ({ item, t }: { item: CalculationResult, t: any }) => {
@@ -44,7 +45,7 @@ const ResultItem = ({ item, t }: { item: CalculationResult, t: any }) => {
   );
 };
 
-const ScoreCalculator: React.FC<ScoreCalculatorProps> = ({ label, enableDefenseScore = false }) => {
+const ScoreCalculator: React.FC<ScoreCalculatorProps> = ({ label, enableDefenseScore = false, noBorder = false }) => {
   const { t } = useTranslation(['toolbox', 'translation']);
   const [targetScore, setTargetScore] = useState<number | ''>('');
   const [defenseScore, setDefenseScore] = useState<number | ''>(450);
@@ -116,13 +117,15 @@ const ScoreCalculator: React.FC<ScoreCalculatorProps> = ({ label, enableDefenseS
   }, [results]);
 
   return (
-    <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden">
-      <div className="p-4 border-b border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/50 flex items-center gap-2">
-        <Calculator className="w-5 h-5 text-amber-600" />
-        <h2 className="font-bold text-stone-800 dark:text-stone-200">
-          {t('toolbox:score_calculator.title', '戰鬥分數反推計算機')} {label}
-        </h2>
-      </div>
+    <div className={`${noBorder ? '' : 'bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700'} overflow-hidden`}>
+      {!noBorder && (
+        <div className="p-4 border-b border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/50 flex items-center gap-2">
+          <Calculator className="w-5 h-5 text-amber-600" />
+          <h2 className="font-bold text-stone-800 dark:text-stone-200">
+            {t('toolbox:score_calculator.title', '戰鬥分數反推計算機')} {label}
+          </h2>
+        </div>
+      )}
 
       <div className="p-6 space-y-6">
         {/* Input Section */}

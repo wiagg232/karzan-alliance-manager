@@ -3,9 +3,9 @@ import { supabase } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
 import { Trophy, Save, AlertCircle, Plus, ChevronDown, ChevronRight, Archive, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { logEvent } from '@/analytics';
 import GuildRaidTable from '../components/GuildRaidTable';
 import MemberStatsModal from '../components/MemberStatsModal';
+import ScoreCalculator from '@/features/toolbox/components/ScoreCalculator';
 
 interface RaidSeason {
   id: string;
@@ -40,6 +40,7 @@ export default function GuildRaidManager() {
   const [isComparisonMode, setIsComparisonMode] = useState(false);
   const [selectedGuildIds, setSelectedGuildIds] = useState<string[]>([]);
   const [isGuildSelectionOpen, setIsGuildSelectionOpen] = useState(true);
+  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   
   const [sortConfig, setSortConfig] = useState<{ key: 'default' | 'score', order: 'asc' | 'desc' }>({ key: 'default', order: 'asc' });
   const [selectedMemberStats, setSelectedMemberStats] = useState<any>(null);
@@ -232,7 +233,6 @@ export default function GuildRaidManager() {
         });
         return next;
       });
-      logEvent('GuildRaidManager', 'Save Guild Records', `Guild: ${guildId}, Count: ${draftsToSave.length}`);
     } catch (err: any) {
       console.error('Error saving records:', err);
       setError(err.message);
@@ -268,8 +268,13 @@ export default function GuildRaidManager() {
       const roleOrder: Record<string, number> = { 'leader': 1, 'coleader': 2, 'member': 3 };
       const orderA = roleOrder[a.role] || 99;
       const orderB = roleOrder[b.role] || 99;
-      if (orderA !== orderB) return orderA - orderB;
-      return a.name.localeCompare(b.name);
+      
+      if (orderA !== orderB) {
+        return sortConfig.order === 'desc' ? orderB - orderA : orderA - orderB;
+      }
+      
+      const nameCompare = a.name.localeCompare(b.name);
+      return sortConfig.order === 'desc' ? -nameCompare : nameCompare;
     });
   };
 
@@ -295,7 +300,6 @@ export default function GuildRaidManager() {
 
       setSeasons(prev => prev.map(s => String(s.id) === String(selectedSeasonId).trim() ? { ...s, is_archived: true } : s));
       setIsArchiveModalOpen(false);
-      logEvent('GuildRaidManager', 'Archive Season', `Season ID: ${selectedSeasonId}`);
     } catch (err: any) {
       console.error('Error archiving season:', err);
       setError(err.message);
@@ -321,7 +325,6 @@ export default function GuildRaidManager() {
         setSelectedSeasonId(String(createdSeason.id));
         setIsSeasonModalOpen(false);
         setNewSeason({ season_number: createdSeason.season_number + 1, period_text: '', description: '' });
-        logEvent('GuildRaidManager', 'Add Season', `Season ID: ${createdSeason.id}`);
       }
     } catch (err: any) {
       console.error('Error saving season:', err);
@@ -333,13 +336,6 @@ export default function GuildRaidManager() {
 
   const selectedSeason = seasons.find(s => String(s.id) === String(selectedSeasonId).trim());
   const isSelectedSeasonArchived = !!selectedSeason?.is_archived;
-
-  console.log('[GuildRaidManager] Data State:', {
-    membersCount: Object.keys(db.members).length,
-    seasonsCount: seasons.length,
-    selectedSeasonId,
-    isSelectedSeasonArchived
-  });
 
   if (!canManage) {
     return (
@@ -436,58 +432,77 @@ export default function GuildRaidManager() {
           </div>
         )}
 
-        {/* Guild Selection */}
-        <div className="mb-6 bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden">
-          <button 
-            onClick={() => setIsGuildSelectionOpen(!isGuildSelectionOpen)}
-            className="w-full px-4 py-3 flex items-center justify-between bg-stone-50 dark:bg-stone-700/50 hover:bg-stone-100 dark:hover:bg-stone-600 transition-colors"
-          >
-            <span className="font-bold text-stone-800 dark:text-stone-200">
-              {t('common.select_guild', '選擇公會')}
-            </span>
-            {isGuildSelectionOpen ? <ChevronDown className="w-5 h-5 text-stone-500" /> : <ChevronRight className="w-5 h-5 text-stone-500" />}
-          </button>
-          
-          {isGuildSelectionOpen && (
-            <div className="p-4 space-y-4">
-              {Object.entries(guildsByTier).sort(([a], [b]) => Number(a) - Number(b)).map(([tierStr, guilds]) => {
-                const tier = Number(tierStr);
-                return (
-                  <div key={tier} className="flex items-start gap-4">
-                    <div className="w-16 flex-shrink-0 pt-2 text-sm font-bold text-stone-500 dark:text-stone-400">
-                      T{tier}
+        {/* Guild Selection & Calculator */}
+        <div className="flex flex-col lg:flex-row gap-6 mb-6 items-start">
+          <div className="flex-1 w-full bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden">
+            <button 
+              onClick={() => setIsGuildSelectionOpen(!isGuildSelectionOpen)}
+              className="w-full px-4 py-3 flex items-center justify-between bg-stone-50 dark:bg-stone-700/50 hover:bg-stone-100 dark:hover:bg-stone-600 transition-colors"
+            >
+              <span className="font-bold text-stone-800 dark:text-stone-200">
+                {t('common.select_guild', '選擇公會')}
+              </span>
+              {isGuildSelectionOpen ? <ChevronDown className="w-5 h-5 text-stone-500" /> : <ChevronRight className="w-5 h-5 text-stone-500" />}
+            </button>
+            
+            {isGuildSelectionOpen && (
+              <div className="p-4 space-y-4">
+                {Object.entries(guildsByTier).sort(([a], [b]) => Number(a) - Number(b)).map(([tierStr, guilds]) => {
+                  const tier = Number(tierStr);
+                  return (
+                    <div key={tier} className="flex items-start gap-4">
+                      <div className="w-16 flex-shrink-0 pt-2 text-sm font-bold text-stone-500 dark:text-stone-400">
+                        T{tier}
+                      </div>
+                      <div className="flex flex-wrap gap-2 flex-1">
+                        {guilds.map(guild => {
+                          const isSelected = selectedGuildIds.includes(guild.id!);
+                          return (
+                            <button
+                              key={guild.id}
+                              onClick={() => handleGuildToggle(guild.id!)}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
+                                isSelected
+                                  ? getTierColorActive(tier)
+                                  : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
+                              }`}
+                            >
+                              {isComparisonMode && (
+                                <input 
+                                  type="checkbox" 
+                                  checked={isSelected} 
+                                  readOnly 
+                                  className="mr-2"
+                                />
+                              )}
+                              {guild.name}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 flex-1">
-                      {guilds.map(guild => {
-                        const isSelected = selectedGuildIds.includes(guild.id!);
-                        return (
-                          <button
-                            key={guild.id}
-                            onClick={() => handleGuildToggle(guild.id!)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
-                              isSelected
-                                ? getTierColorActive(tier)
-                                : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
-                            }`}
-                          >
-                            {isComparisonMode && (
-                              <input 
-                                type="checkbox" 
-                                checked={isSelected} 
-                                readOnly 
-                                className="mr-2"
-                              />
-                            )}
-                            {guild.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="w-full lg:w-80 flex-shrink-0 bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden">
+            <button 
+              onClick={() => setIsCalculatorOpen(!isCalculatorOpen)}
+              className="w-full px-4 py-3 flex items-center justify-between bg-stone-50 dark:bg-stone-700/50 hover:bg-stone-100 dark:hover:bg-stone-600 transition-colors"
+            >
+              <span className="font-bold text-stone-800 dark:text-stone-200">
+                {t('toolbox:score_calculator.title', '戰鬥分數反推計算機')} (舊)
+              </span>
+              {isCalculatorOpen ? <ChevronDown className="w-5 h-5 text-stone-500" /> : <ChevronRight className="w-5 h-5 text-stone-500" />}
+            </button>
+            {isCalculatorOpen && (
+              <div className="p-0">
+                <ScoreCalculator label="(舊)" enableDefenseScore={true} noBorder={true} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tables Area */}
@@ -509,6 +524,7 @@ export default function GuildRaidManager() {
                 seasonId={selectedSeasonId}
                 loading={loading}
                 saving={saving}
+                sortConfig={sortConfig}
                 onSort={handleSort}
                 onRecordChange={handleRecordChange}
                 onMemberClick={setSelectedMemberStats}

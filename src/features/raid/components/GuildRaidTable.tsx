@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Pencil, Save, X } from 'lucide-react';
+import { Search, Pencil, Save, X, ArrowDownWideNarrow, ArrowDownNarrowWide } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Member } from '@/entities/member/types';
 
@@ -23,6 +23,7 @@ interface GuildRaidTableProps {
   seasonId: string;
   loading: boolean;
   saving: boolean;
+  sortConfig: { key: 'default' | 'score', order: 'asc' | 'desc' };
   onSort: (key: 'default' | 'score') => void;
   onRecordChange: (memberId: string, field: 'score' | 'note' | 'season_note', value: string | number) => void;
   onMemberClick: (member: Member) => void;
@@ -41,6 +42,7 @@ export default function GuildRaidTable({
   seasonId,
   loading,
   saving,
+  sortConfig,
   onSort,
   onRecordChange,
   onMemberClick,
@@ -114,7 +116,14 @@ export default function GuildRaidTable({
                   className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-600"
                   onClick={() => onSort('default')}
                 >
-                  {t('common.member', '成員')}
+                  <div className="flex items-center gap-1">
+                    {t('common.member', '成員')}
+                    {sortConfig.key === 'default' && (
+                      sortConfig.order === 'asc' 
+                        ? <ArrowDownWideNarrow className="w-3.5 h-3.5 text-indigo-500" />
+                        : <ArrowDownNarrowWide className="w-3.5 h-3.5 text-indigo-500" />
+                    )}
+                  </div>
                 </th>
                 {!isComparisonMode && (
                   <th className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600">
@@ -130,7 +139,14 @@ export default function GuildRaidTable({
                   className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-600 w-24"
                   onClick={() => onSort('score')}
                 >
-                  {t('raid.column_score', '分數')}
+                  <div className="flex items-center gap-1">
+                    {t('raid.column_score', '分數')}
+                    {sortConfig.key === 'score' && (
+                      sortConfig.order === 'asc' 
+                        ? <ArrowDownWideNarrow className="w-3.5 h-3.5 text-indigo-500" />
+                        : <ArrowDownNarrowWide className="w-3.5 h-3.5 text-indigo-500" />
+                    )}
+                  </div>
                 </th>
               </tr>
             </thead>
