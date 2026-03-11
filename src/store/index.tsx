@@ -366,7 +366,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
   // Function to fetch members for a specific guild
-  const fetchMembers = async (guildId: string, columns: string = 'id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, "isReserved", friend_group)') => {
+  const fetchMembers = async (guildId: string, columns: string = 'id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reversed, friend_group)') => {
     if (isOffline) return;
 
     // Check if we already have members for this guild
@@ -396,9 +396,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const camelMember = toCamel<any>(member);
       const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
       // member_notes keys are in snake_case since toCamel uses { deep: false }
-      // Exception: "isReserved" is camelCase in the database due to quoting
       const note = memberNotes?.note || '';
-      const isReserved = memberNotes?.isReserved || memberNotes?.is_reserved || false;
+      const isReserved = memberNotes?.is_reversed || false;
       const friendGroup = memberNotes?.friend_group || '';
       const mappedMember: Member = {
         ...camelMember,
@@ -429,7 +428,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchAllMembers = async () => {
     if (isOffline) return;
 
-    const { data, error } = await supabase.from('members').select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, "isReserved", friend_group)');
+    const { data, error } = await supabase.from('members').select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reversed, friend_group)');
 
     if (error) {
       console.error("Error fetching all members:", error);
@@ -440,9 +439,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const camelMember = toCamel<any>(member);
       const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
       // member_notes keys are in snake_case since toCamel uses { deep: false }
-      // Exception: "isReserved" is camelCase in the database due to quoting
       const note = memberNotes?.note || '';
-      const isReserved = memberNotes?.isReserved || memberNotes?.is_reserved || false;
+      const isReserved = memberNotes?.is_reversed || false;
       const friendGroup = memberNotes?.friend_group || '';
       const mappedMember: Member = {
         ...camelMember,
@@ -464,7 +462,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let queryBuilder = supabase
       .from('members')
-      .select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, "isReserved", friend_group)', { count: 'exact' })
+      .select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reversed, friend_group)', { count: 'exact' })
       .ilike('name', `%${query}%`)
       .order('status', { ascending: true }) // active comes before archived
       .order('name', { ascending: true })
@@ -482,23 +480,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     return { 
-      data: (data as any[]).map(m => {
-        const camelMember = toCamel<any>(m);
-        const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
-      // member_notes keys are in snake_case since toCamel uses { deep: false }
-      // Exception: "isReserved" is camelCase in the database due to quoting
-      const note = memberNotes?.note || '';
-      const isReserved = memberNotes?.isReserved || memberNotes?.is_reserved || false;
-      const friendGroup = memberNotes?.friend_group || '';
-        const mappedMember: Member = {
-          ...camelMember,
-          note,
-          isReserved,
-          friendGroup,
-        };
-        delete (mappedMember as any).memberNotes;
-        return mappedMember;
-      }), 
+       data: (data as any[]).map(m => {
+         const camelMember = toCamel<any>(m);
+         const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
+       // member_notes keys are in snake_case since toCamel uses { deep: false }
+       const note = memberNotes?.note || '';
+       const isReserved = memberNotes?.is_reversed || false;
+       const friendGroup = memberNotes?.friend_group || '';
+         const mappedMember: Member = {
+           ...camelMember,
+           note,
+           isReserved,
+           friendGroup,
+         };
+         delete (mappedMember as any).memberNotes;
+         return mappedMember;
+       }),
       total: count || 0 
     };
   };
@@ -617,7 +614,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (note || isReserved || friendGroup) {
       await supabase
         .from('member_notes')
-        .insert({ member_id: newMemberId, note, isReserved, friend_group: friendGroup });
+        .insert({ member_id: newMemberId, note, is_reversed: isReserved, friend_group: friendGroup });
     }
 
     if (data) {
@@ -681,7 +678,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const updateData: any = {};
       if (note !== undefined) updateData.note = note;
-      if (isReserved !== undefined) updateData.isReserved = isReserved;
+      if (isReserved !== undefined) updateData.is_reversed = isReserved;
       if (friendGroup !== undefined) updateData.friend_group = friendGroup;
 
       if (existingNote) {

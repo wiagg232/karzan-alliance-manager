@@ -443,7 +443,7 @@ export const useMemberBoardStore = create<Store>((set, get) => ({
             const memberNotesToSave = finalMembers.map(m => ({
                 member_id: m.id,
                 note: m.note,
-                isReserved: m.isReserved || false,
+                is_reversed: m.isReserved || false,
                 friend_group: m.friendGroup,
             }));
 
