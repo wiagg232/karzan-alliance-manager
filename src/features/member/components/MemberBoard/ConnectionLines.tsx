@@ -76,18 +76,36 @@ export default function ConnectionLines() {
         // Initial update
         updateLines();
         
-        // Polling for position changes (e.g. after layout shifts or moves)
-        // Reduced interval from 200ms to 500ms for better performance
-        const interval = setInterval(updateLines, 500);
+        // Use requestAnimationFrame for smoother updates instead of polling
+        let animationFrameId: number;
+        let lastUpdate = 0;
+        const updateLoop = (timestamp: number) => {
+            // Throttle to max once per 100ms (10fps) for better performance
+            if (timestamp - lastUpdate > 100) {
+                updateLines();
+                lastUpdate = timestamp;
+            }
+            animationFrameId = requestAnimationFrame(updateLoop);
+        };
         
-        // Update on window events
-        window.addEventListener('resize', updateLines);
-        window.addEventListener('scroll', updateLines);
+        // Start animation loop
+        animationFrameId = requestAnimationFrame(updateLoop);
+        
+        // Update on window events with throttling
+        let resizeTimeout: NodeJS.Timeout;
+        const handleResize = () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(updateLines, 100);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('scroll', handleResize, { passive: true });
         
         return () => {
-            clearInterval(interval);
-            window.removeEventListener('resize', updateLines);
-            window.removeEventListener('scroll', updateLines);
+            cancelAnimationFrame(animationFrameId);
+            clearTimeout(resizeTimeout);
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('scroll', handleResize);
         };
     }, [localMembers, stagingMembers]);
 

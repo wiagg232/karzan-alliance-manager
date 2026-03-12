@@ -4,14 +4,14 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useMemberBoardStore } from './store/useMemberBoardStore';
 import { buildTieredData } from './utils/dataUtils';
 import TierSection from './TierSection';
-import BatchActionBar from './BatchActionBar';
 import ZoomControls from './ZoomControls';
 import NotificationModal from './NotificationModal';
+import ArchiveModal from './ArchiveModal';
 import type { Member, Guild, TieredData } from '@entities/member/types';
 import StagingArea from './StagingArea';
 import DeletionArea from './DeletionArea';
 import ConnectionLines from './ConnectionLines';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, CheckSquare, Square } from 'lucide-react';
 
 type Props = {
     initialMembers: Member[];
@@ -29,7 +29,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
         setMultiSelectMode,
         selectedIds,
         clearSelection,
-        deleteMember,
+        batchDelete,
         pasteMembers,
         undo,
         redo,
@@ -81,7 +81,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
                 e.preventDefault();
                 const copied = localMembers.filter(m => selected.includes(m.id!));
                 navigator.clipboard.writeText(JSON.stringify(copied));
-                selected.forEach(id => deleteMember(id));
+                batchDelete();
                 clearSelection();
             } else if (e.key.toLowerCase() === 'v') {
                 e.preventDefault();
@@ -121,7 +121,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isMultiSelectMode, selectedIds, localMembers, localGuilds, deleteMember, clearSelection, pasteMembers, undo, redo]);
+    }, [isMultiSelectMode, selectedIds, localMembers, localGuilds, batchDelete, clearSelection, pasteMembers, undo, redo]);
 
     // ==================== 拖曳 ====================
 
@@ -151,7 +151,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
     return (
         <div className="flex-1 relative w-full overflow-hidden bg-gray-950 text-gray-100">
             {/* 頂部控制列 */}
-            <div className="top-controls absolute top-3 right-3 z-50 flex items-center gap-3">
+            <div className="top-controls absolute top-3 right-3 z-50 flex items-center gap-2">
                 <button
                     onClick={undo}
                     disabled={history.length === 0}
@@ -174,17 +174,21 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
                     <RotateCcw size={14} className="scale-x-[-1]" />
                     <span>Redo</span>
                 </button>
-
                 <button
                     onClick={() => setMultiSelectMode(!isMultiSelectMode)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${isMultiSelectMode
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700 border border-gray-700'
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${isMultiSelectMode
+                            ? 'bg-indigo-700 text-white border-indigo-500'
+                            : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
                         }`}
                 >
-                    {isMultiSelectMode ? '關閉多選' : '多選模式'}
+                    {isMultiSelectMode ? <CheckSquare size={14} /> : <Square size={14} />}
+                    <span>多選模式</span>
+                    {selectedIds.size > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 bg-indigo-600 text-white text-xs rounded">
+                            {selectedIds.size}
+                        </span>
+                    )}
                 </button>
-
                 <button
                     onClick={handleSave}
                     className="px-5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium shadow transition"
@@ -219,9 +223,8 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
             <StagingArea />
             <DeletionArea />
 
-
-            <BatchActionBar />
             <NotificationModal />
+            <ArchiveModal />
         </div>
     );
 }
