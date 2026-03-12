@@ -528,11 +528,13 @@ export default function GuildRaidManager() {
     if (!selectedSeasonId) return;
     setArchiving(true);
     try {
-      // 1. Get all non-archived members
-      const activeMembers = Object.values(db.members).filter(m => m.status !== 'archived');
+      // 1. Get all members to archive (active members + archived members who have a record)
+      const membersToArchive = Object.values(db.members).filter(m => 
+        m.status !== 'archived' || records[m.id!] !== undefined
+      );
 
       // 2. Prepare records to upsert with current guild_id as season_guild
-      const recordsToUpsert = activeMembers.map(m => {
+      const recordsToUpsert = membersToArchive.map(m => {
         const existing = records[m.id!];
         return {
           season_id: selectedSeasonId,
@@ -553,7 +555,17 @@ export default function GuildRaidManager() {
         if (upsertError) throw upsertError;
       }
 
-      // 4. Mark season as archived
+      // 4. Update all guild medians to ensure they are synced with the final state
+      const nextRecords = { ...records };
+      recordsToUpsert.forEach(r => {
+        nextRecords[r.member_id] = r as MemberRaidRecord;
+      });
+      
+      await Promise.all(
+        Object.keys(db.guilds).map(guildId => updateGuildMedian(guildId, nextRecords))
+      );
+
+      // 5. Mark season as archived
       const { error } = await supabase
         .from('raid_seasons')
         .update({ is_archived: true })
@@ -561,10 +573,13 @@ export default function GuildRaidManager() {
 
       if (error) throw error;
 
+      // Update records locally to prevent UI flickering before fetchRecords completes
+      setRecords(nextRecords);
+      
       setSeasons(prev => prev.map(s => String(s.id) === String(selectedSeasonId).trim() ? { ...s, is_archived: true } : s));
       setIsArchiveModalOpen(false);
       
-      // Refresh records to get the new season_guild values
+      // Refresh records to ensure sync with server
       fetchRecords();
     } catch (err: any) {
       console.error('Error archiving season:', err);
