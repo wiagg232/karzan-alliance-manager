@@ -24,7 +24,7 @@ export interface Member {
   note?: string;
   seasonNote?: string;
   color?: string;
-  totalScore?: number;
+  score?: number;
   updatedAt?: number;
   status?: string;
   archiveRemark?: string;

@@ -366,7 +366,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
   // Function to fetch members for a specific guild
-  const fetchMembers = async (guildId: string, columns: string = 'id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reserved), member_raid_records(season_note)') => {
+  const fetchMembers = async (guildId: string, columns: string = 'id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reserved), member_raid_records(score, season_note)') => {
     if (isOffline) return;
 
     // Check if we already have members for this guild
@@ -400,11 +400,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const note = memberNotes?.note || '';
       const isReserved = memberNotes?.is_reserved || false;
       const seasonNote = memberRaidRecords?.seasonNote || memberRaidRecords?.season_note || '';
+      const score = memberRaidRecords?.score ?? 0;
       const mappedMember: Member = {
         ...camelMember,
         note,
         isReserved,
         seasonNote,
+        score,
       };
       delete (mappedMember as any).memberNotes;
       delete (mappedMember as any).memberRaidRecords;
@@ -430,7 +432,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchAllMembers = async () => {
     if (isOffline) return;
 
-    const { data, error } = await supabase.from('members').select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reserved), member_raid_records(season_note)');
+    const { data, error } = await supabase.from('members').select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reserved), member_raid_records(score, season_note)');
 
     if (error) {
       console.error("Error fetching all members:", error);
@@ -445,11 +447,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const note = memberNotes?.note || '';
       const isReserved = memberNotes?.is_reserved || false;
       const seasonNote = memberRaidRecords?.seasonNote || memberRaidRecords?.season_note || '';
+      const score = memberRaidRecords?.score ?? 0;
       const mappedMember: Member = {
         ...camelMember,
         note,
         isReserved,
         seasonNote,
+        score,
       };
       delete (mappedMember as any).memberNotes;
       delete (mappedMember as any).memberRaidRecords;
@@ -466,7 +470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let queryBuilder = supabase
       .from('members')
-      .select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reserved), member_raid_records(season_note)', { count: 'exact' })
+      .select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reserved), member_raid_records(score, season_note)', { count: 'exact' })
       .ilike('name', `%${query}%`)
       .order('status', { ascending: true }) // active comes before archived
       .order('name', { ascending: true })
@@ -492,11 +496,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
        const note = memberNotes?.note || '';
        const isReserved = memberNotes?.is_reserved || false;
        const seasonNote = memberRaidRecords?.seasonNote || memberRaidRecords?.season_note || '';
+       const score = memberRaidRecords?.score ?? m.score ?? 0;
          const mappedMember: Member = {
            ...camelMember,
            note,
            isReserved,
            seasonNote,
+           score,
          };
          delete (mappedMember as any).memberNotes;
          delete (mappedMember as any).memberRaidRecords;

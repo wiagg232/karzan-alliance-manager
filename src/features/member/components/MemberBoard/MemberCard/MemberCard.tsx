@@ -208,7 +208,7 @@ export default function MemberCard({
                             {/* 右邊：總分 */}
                             <div className="flex-shrink-0 text-right">
                                 <div className="text-[18px] font-medium transition-colors hover:text-emerald-300 text-emerald-400">
-                                    {member.totalScore ?? 0}
+                                    {member.score ?? 0}
                                 </div>
                             </div>
 

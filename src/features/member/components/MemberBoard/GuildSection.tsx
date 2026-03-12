@@ -50,7 +50,7 @@ export default function GuildSection({ guild, cardWidth }: Props) {
             role: 'member',
             records: {},
             exclusiveWeapons: {},
-            totalScore: 0,
+            score: 0,
             updatedAt: Date.now(),
         };
 
@@ -89,7 +89,7 @@ export default function GuildSection({ guild, cardWidth }: Props) {
 
     // 公會總分小計
     const guildTotalScore = useMemo(() => {
-        return (guild.members || []).reduce((sum, m) => sum + (m.totalScore ?? 0), 0);
+        return (guild.members || []).reduce((sum, m) => sum + (m.score ?? 0), 0);
     }, [guild.members]);
 
     return (
