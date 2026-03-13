@@ -5,23 +5,15 @@ interface GuildSelectionProps {
   selectedGuildIds: string[];
   handleGuildToggle: (guildId: string) => void;
   isComparisonMode: boolean;
+  getTierColorActive: (tier: number) => string;
 }
-
-const getTierColorActive = (tier: number) => {
-  switch (tier) {
-    case 1: return 'bg-orange-500 text-white border-orange-600 shadow-md';
-    case 2: return 'bg-blue-500 text-white border-blue-600 shadow-md';
-    case 3: return 'bg-stone-500 text-white border-stone-600 shadow-md';
-    case 4: return 'bg-green-500 text-white border-green-600 shadow-md';
-    default: return 'bg-stone-500 text-white border-stone-600 shadow-md';
-  }
-};
 
 const GuildSelection: React.FC<GuildSelectionProps> = ({
   guildsByTier,
   selectedGuildIds,
   handleGuildToggle,
   isComparisonMode,
+  getTierColorActive,
 }) => {
   return (
     <div className="mb-4">

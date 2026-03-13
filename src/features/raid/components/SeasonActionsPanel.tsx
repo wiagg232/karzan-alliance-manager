@@ -22,7 +22,7 @@ interface ManagerActionsModalProps {
   isSelectedSeasonArchived: boolean;
 }
 
-const SeasonActionsModal: React.FC<ManagerActionsModalProps> = ({
+const SeasonActionsPanel: React.FC<ManagerActionsModalProps> = ({
   isOpen,
   onClose,
   activeTab,
@@ -58,20 +58,19 @@ const SeasonActionsModal: React.FC<ManagerActionsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-300">
-        <div className="flex justify-between items-center p-4 border-b border-stone-200 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-900/20">
-          <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100">賽季操作</h3>
-          <button
-            onClick={() => {
-              setConfirmType(null);
-              onClose();
-            }}
-            className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 p-1 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="mb-6 bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-4 duration-300">
+      <div className="flex justify-between items-center p-4 border-b border-stone-200 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-900/20">
+        <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100">賽季操作</h3>
+        <button
+          onClick={() => {
+            setConfirmType(null);
+            onClose();
+          }}
+          className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 p-1 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-full transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
       {/* Tabs */}
       <div className="flex border-b border-stone-200 dark:border-stone-700">
@@ -323,8 +322,7 @@ const SeasonActionsModal: React.FC<ManagerActionsModalProps> = ({
         )}
       </div>
     </div>
-  </div>
   );
 };
 
-export default SeasonActionsModal;
+export default SeasonActionsPanel;
