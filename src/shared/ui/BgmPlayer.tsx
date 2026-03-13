@@ -13,13 +13,23 @@ export default function BgmPlayer() {
   const volume = userVolume !== null ? userVolume : bgmDefaultVolume;
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
+    if (!audioRef.current) return;
+
+    // Clamp and apply volume
+    const normalized = Math.max(0, Math.min(1, (volume ?? 0) / 100));
+    audioRef.current.volume = normalized;
+
+    // If muted, fully stop playback to avoid any residual sound
+    if (volume === 0) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    } else {
+      attemptPlay();
     }
   }, [volume]);
 
   const attemptPlay = () => {
-    if (audioRef.current && bgmUrl) {
+    if (audioRef.current && bgmUrl && volume !== 0) {
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
