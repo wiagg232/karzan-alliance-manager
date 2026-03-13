@@ -103,7 +103,37 @@ export default function AllianceRaidRecord() {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          setSeasons(prev => [data[0], ...prev].sort((a, b) => b.season_number - a.season_number));
+          const createdSeason = data[0];
+          setSeasons(prev => [createdSeason, ...prev].sort((a, b) => b.season_number - a.season_number));
+
+          // Copy previous season's guild notes
+          const previousSeason = seasons.length > 0 ? seasons[0] : null;
+          if (previousSeason) {
+            const { data: prevGuildRecords, error: prevRecordsError } = await supabase
+              .from('guild_raid_records')
+              .select('guild_id, note')
+              .eq('season_id', previousSeason.id);
+
+            if (!prevRecordsError && prevGuildRecords && prevGuildRecords.length > 0) {
+              const newGuildRecords = prevGuildRecords
+                .filter(record => record.note !== null && record.note !== '')
+                .map(record => ({
+                  season_id: createdSeason.id,
+                  guild_id: record.guild_id,
+                  note: record.note
+                }));
+
+              if (newGuildRecords.length > 0) {
+                const { error: upsertError } = await supabase
+                  .from('guild_raid_records')
+                  .upsert(newGuildRecords, { onConflict: 'season_id,guild_id' });
+                
+                if (upsertError) {
+                  console.error('Error copying previous season guild notes:', upsertError);
+                }
+              }
+            }
+          }
         }
       }
       setIsSeasonModalOpen(false);

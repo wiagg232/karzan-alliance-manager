@@ -2,11 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
-import { Trophy, Save, AlertCircle, Plus, Archive, X } from 'lucide-react';
+import { Trophy, AlertCircle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import GuildRaidTable from '../components/GuildRaidTable';
 import MemberStatsModal from '../components/MemberStatsModal';
-import ScoreCalculator from '@/features/toolbox/components/ScoreCalculator';
+import TopControlBar from '../components/TopControlBar';
+import GuildSelection from '../components/GuildSelection';
+import SeasonActionsPanel from '../components/SeasonActionsPanel';
 
 interface RaidSeason {
   id: string;
@@ -30,6 +32,7 @@ interface GuildRaidRecord {
   season_id: string;
   guild_id: string;
   member_score_median: number;
+  note?: string;
 }
 
 export default function GuildRaidManager() {
@@ -53,6 +56,7 @@ export default function GuildRaidManager() {
 
   const [draftRecords, setDraftRecords] = useState<Record<string, MemberRaidRecord>>({});
   const [guildRaidRecords, setGuildRaidRecords] = useState<Record<string, GuildRaidRecord>>({}); // key: guild_id
+  const [ghostRecords, setGhostRecords] = useState<Record<string, any[]>>({});
   const [highlightedMemberIds, setHighlightedMemberIds] = useState<Set<string>>(new Set());
   
   const [loading, setLoading] = useState(true);
@@ -65,11 +69,14 @@ export default function GuildRaidManager() {
   
   const [sortConfig, setSortConfig] = useState<{ key: 'default' | 'score', order: 'asc' | 'desc' }>({ key: 'default', order: 'asc' });
   const [selectedMemberStats, setSelectedMemberStats] = useState<any>(null);
-  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
 
-  const [isSeasonModalOpen, setIsSeasonModalOpen] = useState(false);
+  const [isSeasonPanelOpen, setIsSeasonPanelOpen] = useState(false);
+  const [activeSeasonTab, setActiveSeasonTab] = useState<'add' | 'archive' | 'delete'>('add');
   const [newSeason, setNewSeason] = useState({ season_number: 1, period_text: '', description: '' });
+  const [keepScores, setKeepScores] = useState(true);
+  const [keepSeasonNotes, setKeepSeasonNotes] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [rowHeights, setRowHeights] = useState<Record<number, number>>({});
   const [headerHeight, setHeaderHeight] = useState<number>(0);
@@ -286,7 +293,10 @@ export default function GuildRaidManager() {
     if (!selectedSeasonId) return;
     if (!isBackground) setLoading(true);
     try {
-      const [recordsRes, guildRecordsRes] = await Promise.all([
+      const currentSeason = seasons.find(s => String(s.id) === String(selectedSeasonId));
+      const previousSeason = seasons.find(s => currentSeason && s.season_number < currentSeason.season_number);
+
+      const promises = [
         supabase
           .from('member_raid_records')
           .select('*')
@@ -295,7 +305,11 @@ export default function GuildRaidManager() {
           .from('guild_raid_records')
           .select('*')
           .eq('season_id', selectedSeasonId)
-      ]);
+      ];
+
+      const results = await Promise.all(promises);
+      const recordsRes = results[0];
+      const guildRecordsRes = results[1];
 
       if (recordsRes.error && recordsRes.error.code !== '42P01') throw recordsRes.error;
       if (guildRecordsRes.error && guildRecordsRes.error.code !== '42P01') throw guildRecordsRes.error;
@@ -326,8 +340,31 @@ export default function GuildRaidManager() {
     }
   };
 
+  const fetchGhostRecords = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ghost_records')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error && error.code !== '42P01') throw error;
+      
+      const map: Record<string, any[]> = {};
+      if (data) {
+        data.forEach(record => {
+          if (!map[record.member_id]) map[record.member_id] = [];
+          map[record.member_id].push(record);
+        });
+      }
+      setGhostRecords(map);
+    } catch (err) {
+      console.error('Error fetching ghost records:', err);
+    }
+  };
+
   useEffect(() => {
     fetchRecords(false);
+    fetchGhostRecords();
   }, [selectedSeasonId]);
 
   useEffect(() => {
@@ -477,6 +514,34 @@ export default function GuildRaidManager() {
     }
   };
 
+  const handleGuildNoteChange = async (guildId: string, note: string) => {
+    if (!selectedSeasonId) return;
+    try {
+      const { error } = await supabase
+        .from('guild_raid_records')
+        .upsert({
+          season_id: selectedSeasonId,
+          guild_id: guildId,
+          note: note
+        }, { onConflict: 'season_id, guild_id' });
+
+      if (error) throw error;
+      
+      setGuildRaidRecords(prev => ({
+        ...prev,
+        [guildId]: {
+          ...prev[guildId],
+          season_id: selectedSeasonId,
+          guild_id: guildId,
+          note: note
+        }
+      }));
+    } catch (err: any) {
+      console.error('Error updating guild note:', err);
+      setError(err.message);
+    }
+  };
+
   const getSortedMembers = (guildId: string) => {
     const guildMembers = Object.values(db.members).filter(m => {
       if (isSelectedSeasonArchived) {
@@ -577,7 +642,7 @@ export default function GuildRaidManager() {
       setRecords(nextRecords);
       
       setSeasons(prev => prev.map(s => String(s.id) === String(selectedSeasonId).trim() ? { ...s, is_archived: true } : s));
-      setIsArchiveModalOpen(false);
+      setIsSeasonPanelOpen(false);
       
       // Refresh records to ensure sync with server
       fetchRecords();
@@ -604,8 +669,70 @@ export default function GuildRaidManager() {
         const createdSeason = data[0];
         setSeasons(prev => [createdSeason, ...prev].sort((a, b) => b.season_number - a.season_number));
         setSelectedSeasonId(String(createdSeason.id));
-        setIsSeasonModalOpen(false);
-        setNewSeason({ season_number: createdSeason.season_number + 1, period_text: '', description: '' });
+
+        // Copy previous season's guild notes
+        const previousSeason = seasons.length > 0 ? seasons[0] : null;
+        if (previousSeason) {
+          const { data: prevGuildRecords, error: prevRecordsError } = await supabase
+            .from('guild_raid_records')
+            .select('guild_id, note')
+            .eq('season_id', previousSeason.id);
+
+          if (!prevRecordsError && prevGuildRecords && prevGuildRecords.length > 0) {
+            const newGuildRecords = prevGuildRecords
+              .filter(record => record.note !== null && record.note !== '')
+              .map(record => ({
+                season_id: createdSeason.id,
+                guild_id: record.guild_id,
+                note: record.note
+              }));
+
+            if (newGuildRecords.length > 0) {
+              const { error: upsertError } = await supabase
+                .from('guild_raid_records')
+                .upsert(newGuildRecords, { onConflict: 'season_id,guild_id' });
+              
+              if (upsertError) {
+                console.error('Error copying previous season guild notes:', upsertError);
+              }
+            }
+          }
+
+          // Copy previous season's member records if requested
+          if (keepScores || keepSeasonNotes) {
+            const { data: prevMemberRecords, error: prevMemberRecordsError } = await supabase
+              .from('member_raid_records')
+              .select('member_id, score, season_note')
+              .eq('season_id', previousSeason.id);
+
+            if (!prevMemberRecordsError && prevMemberRecords && prevMemberRecords.length > 0) {
+              const newMemberRecords = prevMemberRecords
+                .filter(record => (keepScores && record.score) || (keepSeasonNotes && record.season_note))
+                .map(record => ({
+                  season_id: createdSeason.id,
+                  member_id: record.member_id,
+                  score: keepScores ? record.score : 0,
+                  season_note: keepSeasonNotes ? record.season_note : ''
+                }));
+
+              if (newMemberRecords.length > 0) {
+                const { error: upsertMemberError } = await supabase
+                  .from('member_raid_records')
+                  .upsert(newMemberRecords, { onConflict: 'season_id,member_id' });
+                
+                if (upsertMemberError) {
+                  console.error('Error copying previous season member records:', upsertMemberError);
+                }
+              }
+            }
+          }
+        }
+
+        setIsSeasonPanelOpen(false);
+        const nextSeasonNumber = createdSeason.season_number + 1;
+        setNewSeason({ season_number: nextSeasonNumber, period_text: '', description: '' });
+        setKeepScores(true);
+        setKeepSeasonNotes(false);
       }
     } catch (err: any) {
       console.error('Error saving season:', err);
@@ -615,12 +742,63 @@ export default function GuildRaidManager() {
     }
   };
 
+  const handleDeleteRecords = async (type: 'score' | 'season_note') => {
+    if (!selectedSeasonId) return;
+    
+    const confirmMessage = type === 'score' 
+      ? '確定要刪除當前賽季所有成員的分數嗎？此操作無法復原。' 
+      : '確定要刪除當前賽季所有成員的賽季備註嗎？此操作無法復原。';
+    
+    setIsDeleting(true);
+    try {
+      const updateData = type === 'score' ? { score: 0 } : { season_note: '' };
+      const { error } = await supabase
+        .from('member_raid_records')
+        .update(updateData)
+        .eq('season_id', selectedSeasonId);
+
+      if (error) throw error;
+      
+      // Refresh records
+      fetchRecords();
+    } catch (err: any) {
+      console.error('Error deleting records:', err);
+      setError(`Error deleting records: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (seasons.length > 0) {
+      const maxSeason = Math.max(...seasons.map(s => s.season_number));
+      setNewSeason(prev => ({ ...prev, season_number: maxSeason + 1 }));
+    }
+  }, [seasons]);
   const selectedSeason = seasons.find(s => String(s.id) === String(selectedSeasonId).trim());
   const isSelectedSeasonArchived = !!selectedSeason?.is_archived;
   const isArchivedRef = React.useRef(isSelectedSeasonArchived);
   useEffect(() => {
     isArchivedRef.current = isSelectedSeasonArchived;
   }, [isSelectedSeasonArchived]);
+
+  const handleAddGhostRecord = async (memberId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('ghost_records')
+        .insert([{ member_id: memberId, season_number: selectedSeason?.season_number }])
+        .select();
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setGhostRecords(prev => ({
+          ...prev,
+          [memberId]: [data[0], ...(prev[memberId] || [])]
+        }));
+      }
+    } catch (err) {
+      console.error('Error adding ghost record:', err);
+    }
+  };
 
   if (!canManage) {
     return (
@@ -640,88 +818,39 @@ export default function GuildRaidManager() {
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex flex-col">
       <main className="max-w-7xl mx-auto p-4 sm:p-6 flex-1 w-full flex flex-col">
         
-        {/* Top Control Bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-              <Trophy className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-stone-800 dark:text-stone-100">
-                {t('raid.title_guild_manager', '公會聯合戰管理')}
-              </h1>
-            </div>
-          </div>
+        <TopControlBar
+          selectedSeasonId={selectedSeasonId}
+          setSelectedSeasonId={setSelectedSeasonId}
+          seasons={seasons}
+          isComparisonMode={isComparisonMode}
+          setIsComparisonMode={setIsComparisonMode}
+          userRole={userRole}
+          onToggleSeasonPanel={() => {
+            setIsSeasonPanelOpen(!isSeasonPanelOpen);
+          }}
+          onNavigateToRaid={() => navigate('/raid')}
+          onNavigateToTeamAssign={() => navigate('/team')}
+        />
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => navigate('/raid')}
-              className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
-            >
-              <Trophy className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('header.alliance_raid_record')}</span>
-            </button>
-
-            <select
-              value={selectedSeasonId}
-              onChange={e => setSelectedSeasonId(e.target.value)}
-              className="px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              {seasons.map(s => (
-                <option key={s.id} value={s.id}>S{s.season_number} ({s.period_text})</option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => {
-                setNewSeason({ 
-                  season_number: (seasons[0]?.season_number || 0) + 1, 
-                  period_text: '', 
-                  description: '' 
-                });
-                setIsSeasonModalOpen(true);
-              }}
-              className="flex items-center gap-2 px-3 py-2 bg-stone-800 dark:bg-stone-700 text-white rounded-lg hover:bg-stone-700 dark:hover:bg-stone-600 transition-colors text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('alliance_raid.add_season', '新增賽季')}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (Object.keys(draftRecords).length > 0) {
-                  setDraftRecords({});
-                }
-                setIsArchiveModalOpen(true);
-              }}
-              disabled={isSelectedSeasonArchived}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${
-                isSelectedSeasonArchived
-                  ? 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
-                  : 'bg-amber-600 text-white hover:bg-amber-700'
-              }`}
-            >
-              <Archive className="w-4 h-4" />
-              <span className="hidden sm:inline">{isSelectedSeasonArchived ? t('raid.season_archived', '已封存') : t('raid.archive_season', '封存賽季')}</span>
-            </button>
-
-            <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-stone-800 px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 shadow-sm">
-              <span className="text-sm font-medium text-stone-700 dark:text-stone-300">⚖️ {t('raid.comparison_mode', '並列模式')}</span>
-              <div className="relative flex items-center">
-                <input
-                  type="checkbox"
-                  className="peer sr-only"
-                  checked={isComparisonMode}
-                  onChange={(e) => setIsComparisonMode(e.target.checked)}
-                />
-                <div className="w-10 h-6 bg-stone-200 dark:bg-stone-600 rounded-full peer peer-checked:bg-indigo-500 transition-colors shadow-inner"></div>
-                <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-md"></div>
-              </div>
-            </label>
-
-
-          </div>
-        </div>
+        <SeasonActionsPanel
+          isOpen={isSeasonPanelOpen}
+          onClose={() => setIsSeasonPanelOpen(false)}
+          activeTab={activeSeasonTab}
+          onTabChange={setActiveSeasonTab}
+          newSeason={newSeason}
+          setNewSeason={setNewSeason}
+          keepScores={keepScores}
+          setKeepScores={setKeepScores}
+          keepSeasonNotes={keepSeasonNotes}
+          setKeepSeasonNotes={setKeepSeasonNotes}
+          handleSaveSeason={handleSaveSeason}
+          handleArchiveSeason={handleArchiveSeason}
+          handleDeleteRecords={handleDeleteRecords}
+          saving={saving}
+          archiving={archiving}
+          isDeleting={isDeleting}
+          isSelectedSeasonArchived={isSelectedSeasonArchived}
+        />
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3 text-red-700 dark:text-red-400">
@@ -730,47 +859,13 @@ export default function GuildRaidManager() {
           </div>
         )}
 
-        {/* Guild Selection */}
-        <div className="mb-4">
-          <div className="space-y-1">
-            {Object.entries(guildsByTier).sort(([a], [b]) => Number(a) - Number(b)).map(([tierStr, guilds]) => {
-              const tier = Number(tierStr);
-              return (
-                <div key={tier} className="flex items-center gap-2">
-                  <div className="w-6 flex-shrink-0 text-[10px] font-bold text-stone-400 dark:text-stone-500">
-                    T{tier}
-                  </div>
-                  <div className="flex flex-wrap gap-1 flex-1">
-                    {guilds.map(guild => {
-                      const isSelected = selectedGuildIds.includes(guild.id!);
-                      return (
-                        <button
-                          key={guild.id}
-                          onClick={() => handleGuildToggle(guild.id!)}
-                          className={`px-2.5 py-1 rounded text-[12px] font-medium transition-all border ${
-                            isSelected
-                              ? getTierColorActive(tier)
-                              : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
-                          }`}
-                        >
-                          {isComparisonMode && (
-                            <input 
-                              type="checkbox" 
-                              checked={isSelected} 
-                              readOnly 
-                              className="mr-1.5 w-3.5 h-3.5"
-                            />
-                          )}
-                          {guild.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <GuildSelection
+          guildsByTier={guildsByTier}
+          selectedGuildIds={selectedGuildIds}
+          handleGuildToggle={handleGuildToggle}
+          isComparisonMode={isComparisonMode}
+          getTierColorActive={getTierColorActive}
+        />
 
         {/* Tables Area */}
         <div className={`flex-1 grid gap-4 ${isComparisonMode ? `grid-cols-1 md:grid-cols-${Math.min(selectedGuildIds.length, 4)}` : 'grid-cols-1'}`}>
@@ -786,6 +881,7 @@ export default function GuildRaidManager() {
                 sortedMembers={sortedMembers}
                 records={records}
                 draftRecords={draftRecords}
+                guildRaidRecord={guildRaidRecords[guildId]}
                 isComparisonMode={isComparisonMode}
                 isArchived={isSelectedSeasonArchived}
                 seasonId={selectedSeasonId}
@@ -794,6 +890,7 @@ export default function GuildRaidManager() {
                 sortConfig={sortConfig}
                 onSort={handleSort}
                 onRecordChange={handleRecordChange}
+                onGuildNoteChange={handleGuildNoteChange}
                 onBlur={(memberId) => handleAutoSave(memberId, guildId)}
                 onMemberClick={setSelectedMemberStats}
                 rowHeights={rowHeights}
@@ -803,6 +900,8 @@ export default function GuildRaidManager() {
                 theadHeight={theadHeight}
                 onTheadHeightChange={handleTheadHeightChange}
                 highlightedMemberIds={highlightedMemberIds}
+                ghostRecords={ghostRecords}
+                onAddGhostRecord={handleAddGhostRecord}
               />
             );
           })}
@@ -811,125 +910,14 @@ export default function GuildRaidManager() {
       </main>
 
       {/* Member Stats Modal */}
-      <MemberStatsModal 
-        member={selectedMemberStats} 
-        onClose={() => setSelectedMemberStats(null)} 
-      />
-
-      {/* Archive Confirmation Modal */}
-      {isArchiveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-stone-200 dark:border-stone-700">
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-stone-800 dark:text-stone-100 mb-2">
-                {t('raid.archive_season_confirm_title', '確認封存賽季？')}
-              </h3>
-              <p className="text-stone-600 dark:text-stone-400 mb-6">
-                {t('raid.archive_season_confirm_desc', '封存後，此賽季的成績將無法再被修改。您確定要封存嗎？')}
-              </p>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setIsArchiveModalOpen(false)}
-                  className="px-4 py-2 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-lg transition-colors"
-                  disabled={archiving}
-                >
-                  {t('common.cancel', '取消')}
-                </button>
-                <button
-                  onClick={handleArchiveSeason}
-                  disabled={archiving}
-                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                >
-                  {archiving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      {t('common.saving', '儲存中...')}
-                    </>
-                  ) : (
-                    t('raid.archive_season', '封存賽季')
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {selectedMemberStats && (
+        <MemberStatsModal 
+          key={selectedMemberStats.id}
+          member={selectedMemberStats} 
+          onClose={() => setSelectedMemberStats(null)} 
+        />
       )}
 
-      {/* Add Season Modal */}
-      {isSeasonModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b border-stone-200 dark:border-stone-700">
-              <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100">{t('alliance_raid.add_season')}</h3>
-              <button
-                onClick={() => setIsSeasonModalOpen(false)}
-                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSeason} className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  {t('alliance_raid.season_number')}
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={newSeason.season_number}
-                  onChange={e => setNewSeason(prev => ({ ...prev, season_number: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  {t('alliance_raid.period')}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newSeason.period_text}
-                  onChange={e => setNewSeason(prev => ({ ...prev, period_text: e.target.value }))}
-                  className="w-full px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  {t('alliance_raid.description')}
-                </label>
-                <input
-                  type="text"
-                  value={newSeason.description}
-                  onChange={e => setNewSeason(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-stone-300 dark:border-stone-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-100"
-                />
-              </div>
-
-              <div className="pt-4 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsSeasonModalOpen(false)}
-                  className="px-4 py-2 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-lg transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-4 py-2 bg-stone-800 dark:bg-stone-600 text-white rounded-lg hover:bg-stone-700 dark:hover:bg-stone-500 transition-colors disabled:opacity-50 flex items-center gap-2"
-                >
-                  {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                  {t('common.add')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );
