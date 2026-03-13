@@ -133,6 +133,16 @@ export default function GuildRaidManager() {
     return grouped;
   }, [availableGuilds]);
 
+  const guildMemberCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.values(db.members).forEach(m => {
+      if (m.guildId && m.status !== 'archived') {
+        counts[m.guildId] = (counts[m.guildId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [db.members]);
+
   const getTierColorActive = (tier: number) => {
     switch (tier) {
       case 1: return 'bg-orange-500 text-white border-orange-600 shadow-md';
@@ -865,6 +875,7 @@ export default function GuildRaidManager() {
           handleGuildToggle={handleGuildToggle}
           isComparisonMode={isComparisonMode}
           getTierColorActive={getTierColorActive}
+          guildMemberCounts={guildMemberCounts}
         />
 
         {/* Tables Area */}

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 
 interface GuildSelectionProps {
   guildsByTier: Record<number, any[]>;
@@ -6,7 +7,10 @@ interface GuildSelectionProps {
   handleGuildToggle: (guildId: string) => void;
   isComparisonMode: boolean;
   getTierColorActive: (tier: number) => string;
+  guildMemberCounts?: Record<string, number>;
 }
+
+const MAX_MEMBERS = 30;
 
 const GuildSelection: React.FC<GuildSelectionProps> = ({
   guildsByTier,
@@ -14,7 +18,35 @@ const GuildSelection: React.FC<GuildSelectionProps> = ({
   handleGuildToggle,
   isComparisonMode,
   getTierColorActive,
+  guildMemberCounts = {},
 }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const lines: string[] = [];
+    Object.entries(guildsByTier)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .forEach(([tierStr, guilds]) => {
+        const tier = Number(tierStr);
+        const missingGuilds = guilds
+          .map(guild => {
+            const count = guildMemberCounts[guild.id!] || 0;
+            const missing = MAX_MEMBERS - count;
+            return missing > 0 ? `${guild.name}(${missing})` : null;
+          })
+          .filter(Boolean);
+        
+        if (missingGuilds.length > 0) {
+          lines.push(`T${tier}: ${missingGuilds.join('、')}`);
+        }
+      });
+    
+    const text = lines.join('\n');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="mb-4">
       <div className="space-y-1">
@@ -30,6 +62,8 @@ const GuildSelection: React.FC<GuildSelectionProps> = ({
                 <div className="flex flex-wrap gap-1 flex-1">
                   {guilds.map(guild => {
                     const isSelected = selectedGuildIds.includes(guild.id!);
+                    const memberCount = guildMemberCounts[guild.id!] || 0;
+                    const missing = MAX_MEMBERS - memberCount;
                     return (
                       <button
                         key={guild.id}
@@ -49,6 +83,7 @@ const GuildSelection: React.FC<GuildSelectionProps> = ({
                           />
                         )}
                         {guild.name}
+                        {missing > 0 && <span className="ml-1 text-[10px] opacity-80">({missing})</span>}
                       </button>
                     );
                   })}
@@ -56,6 +91,16 @@ const GuildSelection: React.FC<GuildSelectionProps> = ({
               </div>
             );
           })}
+        
+        <div className="mt-2 flex justify-start">
+          <button
+            onClick={handleCopy}
+            className="p-1.5 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors"
+            title="複製缺少人數"
+          >
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+          </button>
+        </div>
       </div>
     </div>
   );
