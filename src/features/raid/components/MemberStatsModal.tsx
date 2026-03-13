@@ -17,24 +17,29 @@ export default function MemberStatsModal({ member, onClose }: MemberStatsModalPr
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyLimit, setHistoryLimit] = useState(4);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
 
   useEffect(() => {
     const fetchHistory = async () => {
       if (!member?.id) return;
       setLoadingHistory(true);
       try {
-        // 1. Get last 4 seasons
-        const { data: seasons, error: seasonsError } = await supabase
+        // 1. Get seasons based on historyLimit
+        const { data: seasons, error: seasonsError, count } = await supabase
           .from('raid_seasons')
-          .select('*')
+          .select('*', { count: 'exact' })
           .order('season_number', { ascending: false })
-          .limit(4);
+          .limit(historyLimit);
         
         if (seasonsError) throw seasonsError;
         if (!seasons || seasons.length === 0) {
           setHistoryData([]);
+          setHasMoreHistory(false);
           return;
         }
+
+        setHasMoreHistory(count ? seasons.length < count : false);
 
         const seasonIds = seasons.map(s => s.id);
 
@@ -82,7 +87,7 @@ export default function MemberStatsModal({ member, onClose }: MemberStatsModalPr
     };
 
     fetchHistory();
-  }, [member?.id, member?.guildId]);
+  }, [member?.id, member?.guildId, historyLimit]);
 
   const getTierColor = (tier: number) => {
     switch (tier) {
@@ -163,7 +168,7 @@ export default function MemberStatsModal({ member, onClose }: MemberStatsModalPr
             </button>
             
             {isHistoryOpen && (
-              loadingHistory ? (
+              loadingHistory && historyData.length === 0 ? (
                 <div className="flex justify-center py-4">
                   <Loader2 className="w-6 h-6 animate-spin text-stone-400" />
                 </div>
@@ -212,6 +217,22 @@ export default function MemberStatsModal({ member, onClose }: MemberStatsModalPr
                       })}
                     </tbody>
                   </table>
+                  {hasMoreHistory && (
+                    <div className="bg-stone-50 dark:bg-stone-800/50 border-t border-stone-200 dark:border-stone-700 p-2 text-center">
+                      <button
+                        onClick={() => setHistoryLimit(prev => prev + 4)}
+                        disabled={loadingHistory}
+                        className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 w-full py-1"
+                      >
+                        {loadingHistory ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                        {t('common.load_more', '載入更多')}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-4 text-stone-400 text-xs italic border border-dashed border-stone-200 dark:border-stone-700 rounded-xl">
