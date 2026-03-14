@@ -284,7 +284,7 @@ export default function GuildRaidTable({
                     key={member.id} 
                     ref={el => { rowRefs.current[index] = el; }}
                     style={isComparisonMode && rowHeights?.[index] ? { height: `${rowHeights[index]}px` } : {}}
-                    className={`border-b border-stone-100 dark:border-stone-700/50 hover:bg-stone-50 dark:hover:bg-stone-700/50 transition-colors ${isDirty ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''} ${isHighlighted ? 'animate-flash-orange' : ''}`}
+                    className={`border-b border-stone-100 dark:border-stone-700/50 even:bg-stone-50 dark:even:bg-stone-700/30 hover:bg-stone-100 dark:hover:bg-stone-700/60 transition-colors ${isDirty ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''} ${isHighlighted ? 'animate-flash-orange' : ''}`}
                   >
                     <td className="py-0.5 px-2">
                       <div className="flex items-center gap-2 group/member">
