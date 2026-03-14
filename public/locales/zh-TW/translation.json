@@ -59,6 +59,7 @@
     "user": "使用者",
     "member": "成員",
     "guild": "公會",
+    "guild_serial": "{{serial}} 會",
     "character": "角色",
     "costume": "服裝",
     "weapon": "武器",

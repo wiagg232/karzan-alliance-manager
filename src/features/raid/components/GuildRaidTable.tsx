@@ -83,7 +83,7 @@ export default function GuildRaidTable({
 }: GuildRaidTableProps) {
   const { t } = useTranslation(['raid', 'translation']);
   const guildName = guild?.name || '';
-  const guildSerial = guild?.serial ? `${guild.serial} 會 ` : '';
+  const guildSerial = guild?.serial ? `${t('common.guild_serial', { serial: guild.serial })} ` : '';
   const displayGuildName = `${guildSerial}${guildName}`;
 
   const rowRefs = useRef<(HTMLTableRowElement | null)[]>([]);

@@ -59,6 +59,7 @@
     "user": "User",
     "member": "Member",
     "guild": "Guild",
+    "guild_serial": "Guild {{serial}}",
     "character": "Character",
     "costume": "Costume",
     "weapon": "Weapon",
