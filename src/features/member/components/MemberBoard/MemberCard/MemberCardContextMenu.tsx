@@ -4,13 +4,7 @@ import { Copy, Trash2, MoveHorizontal, Palette, ArrowLeft, Lock, Unlock, Crown, 
 import { useMemberBoardStore } from '../store/useMemberBoardStore';
 import type { Guild, Member } from '@entities/member/types';
 
-type Props = {
-    member: Member;
-    contextMenuPosition?: { x: number; y: number } | null;
-    onCloseContextMenu?: () => void;
-    originalGuild?: Guild;
-    isInDeletionArea?: boolean;
-};
+type Props = {};
 
 const COLORS = [
     { id: 'default', bg: 'bg-gray-850', buttonBg: 'bg-gray-700', border: 'border-gray-700', buttonBorder: 'border-gray-500', hover: 'hover:bg-gray-800/80', name: '預設' },
@@ -23,11 +17,13 @@ const COLORS = [
     { id: 'pink', bg: 'bg-pink-700', buttonBg: 'bg-pink-700', border: 'border-pink-500', buttonBorder: 'border-pink-500', hover: 'hover:bg-pink-600', name: '粉色' },
 ];
 
-export default function MemberCardContextMenu({ member, contextMenuPosition, onCloseContextMenu, originalGuild, isInDeletionArea }: Props) {
-    const { 
-        stagingMembers, 
-        localGuilds, 
-        selectedIds, 
+export default function MemberCardContextMenu(_: Props) {
+    const {
+        localMembers,
+        stagingMembers,
+        localGuilds,
+        initialMemberStates,
+        selectedIds,
         isMultiSelectMode,
         batchUpdateColor,
         batchUpdateRole,
@@ -37,8 +33,15 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
         batchDuplicate,
         batchMoveToGuild,
         batchReturnToOriginalGuild,
-        setSelectedIds
+        setSelectedIds,
+        contextMenu,
+        closeContextMenu,
     } = useMemberBoardStore();
+
+    const member = contextMenu.memberId
+        ? [...localMembers, ...stagingMembers].find((m) => m.id === contextMenu.memberId) ?? null
+        : null;
+
     const [showContextMenu, setShowContextMenu] = useState(false);
     const [showGuildMenu, setShowGuildMenu] = useState(false);
     const [showColorMenu, setShowColorMenu] = useState(false);
@@ -46,48 +49,84 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
     const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
-        if (contextMenuPosition) {
-            const menuHeight = 400;
-            let { x, y } = contextMenuPosition;
-            
-            if (y + menuHeight > window.innerHeight) {
-                y = window.innerHeight - menuHeight - 10;
-            }
-            
-            if (y < 0) y = 0;
+        if (!contextMenu.isOpen || !member) {
+            setShowContextMenu(false);
+            return;
+        }
 
-            setMenuPosition({ x, y });
-            setShowContextMenu(true);
+        const menuHeight = 400;
+        let { x, y } = contextMenu;
+
+        if (y + menuHeight > window.innerHeight) {
+            y = window.innerHeight - menuHeight - 10;
+        }
+
+        if (y < 0) y = 0;
+
+        setMenuPosition({ x, y });
+        setShowContextMenu(true);
+        setShowGuildMenu(false);
+        setShowColorMenu(false);
+        setShowRoleMenu(false);
+
+        // ensure selected member is included when menu opens
+        if (member && !member.isReserved) {
+            if (isMultiSelectMode) {
+                if (!selectedIds.has(member.id!)) {
+                    setSelectedIds(new Set([...selectedIds, member.id!]));
+                }
+            } else {
+                if (selectedIds.size !== 1 || !selectedIds.has(member.id!)) {
+                    setSelectedIds(new Set([member.id!]));
+                }
+            }
+        }
+    }, [contextMenu, member, isMultiSelectMode, selectedIds, setSelectedIds]);
+
+    const handleOpenChange = (open: boolean) => {
+        if (!open && (showGuildMenu || showColorMenu || showRoleMenu)) {
+            // 正在使用子選單時，避免因 Radix 判定為「外部點擊」而隨即關閉主選單
+            return;
+        }
+
+        setShowContextMenu(open);
+
+        if (!open) {
             setShowGuildMenu(false);
             setShowColorMenu(false);
             setShowRoleMenu(false);
-            
-            // Set selectedIds to this member for batch operations
-            if (!isMultiSelectMode) {
-                setSelectedIds(new Set([member.id!]));
-            }
-        }
-    }, [contextMenuPosition, member.id, isMultiSelectMode, setSelectedIds]);
-
-    const handleOpenChange = (open: boolean) => {
-        setShowContextMenu(open);
-        if (!open) {
-            if (!isMultiSelectMode) {
-                setSelectedIds(new Set());
-            }
-            if (onCloseContextMenu) {
-                onCloseContextMenu();
-            }
+            closeContextMenu();
         }
     };
+
+    const originalGuild = member && initialMemberStates[member.id!] ?
+        localGuilds.find(g => g.id === initialMemberStates[member.id!].guildId) || null : null;
+
+    const isInDeletionArea = contextMenu.isInDeletionArea;
 
     // 輔助函數：確保 selectedIds 正確設定後再執行 action
     const withSelectedId = (action: () => void) => {
-        if (!isMultiSelectMode && selectedIds.size === 0) {
-            setSelectedIds(new Set([member.id!]));
+        if (!member || !member.id) {
+            return;
         }
+
+        const alreadySelected = selectedIds.has(member.id);
+        if (isMultiSelectMode) {
+            if (!alreadySelected) {
+                setSelectedIds(new Set([...selectedIds, member.id]));
+            }
+        } else {
+            if (!alreadySelected || selectedIds.size !== 1) {
+                setSelectedIds(new Set([member.id]));
+            }
+        }
+
         action();
     };
+
+    if (!member || !contextMenu.isOpen) {
+        return null;
+    }
 
     const isReserved = member.isReserved;
 
@@ -96,7 +135,7 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
             <Popover.Root open={showContextMenu} onOpenChange={handleOpenChange}>
                 <Popover.Portal>
                     <Popover.Content
-                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerDownCapture={(e) => e.stopPropagation()}
                         className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 z-[10000] min-w-[160px] max-h-[400px] overflow-y-auto"
                         sideOffset={5}
                         align="start"
@@ -107,7 +146,7 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         }}
                     >
                         <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-700 mb-1 truncate">
-                            {isMultiSelectMode && selectedIds.size > 0 
+                            {isMultiSelectMode && selectedIds.size > 0
                                 ? `已選 ${selectedIds.size} 位成員`
                                 : member.name
                             }
@@ -126,9 +165,9 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
 
                         <button
                             disabled={isReserved}
-                            onClick={() => { 
+                            onClick={() => {
                                 withSelectedId(() => {
-                                    setShowRoleMenu(!showRoleMenu); setShowGuildMenu(false); setShowColorMenu(false); 
+                                    setShowRoleMenu(!showRoleMenu); setShowGuildMenu(false); setShowColorMenu(false);
                                 });
                             }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 text-gray-200 cursor-pointer'}`}
@@ -140,9 +179,9 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
 
                         <button
                             disabled={isReserved}
-                            onClick={() => { 
+                            onClick={() => {
                                 withSelectedId(() => {
-                                    setShowColorMenu(!showColorMenu); setShowGuildMenu(false); setShowRoleMenu(false); 
+                                    setShowColorMenu(!showColorMenu); setShowGuildMenu(false); setShowRoleMenu(false);
                                 });
                             }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 text-gray-200 cursor-pointer'}`}
@@ -151,9 +190,9 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         </button>
                         <button
                             disabled={isReserved}
-                            onClick={() => { 
+                            onClick={() => {
                                 batchDuplicate();
-                                setShowContextMenu(false); 
+                                setShowContextMenu(false);
                             }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-800 text-gray-200 cursor-pointer'}`}
                         >
@@ -161,9 +200,9 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         </button>
                         <button
                             disabled={isReserved}
-                            onClick={() => { 
+                            onClick={() => {
                                 withSelectedId(() => {
-                                    setShowGuildMenu(!showGuildMenu); setShowColorMenu(false); setShowRoleMenu(false); 
+                                    setShowGuildMenu(!showGuildMenu); setShowColorMenu(false); setShowRoleMenu(false);
                                 });
                             }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-indigo-900/50 text-indigo-300 cursor-pointer'}`}
@@ -172,9 +211,9 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         </button>
                         {stagingMembers.every((stagingMember) => stagingMember.id != member.id) && <button
                             disabled={isReserved}
-                            onClick={() => { 
+                            onClick={() => {
                                 batchMoveToStaging();
-                                setShowContextMenu(false); 
+                                setShowContextMenu(false);
                             }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-indigo-900/50 text-indigo-300 cursor-pointer'}`}
                         >
@@ -198,9 +237,9 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
                         {!isInDeletionArea && (
                             <button
                                 disabled={isReserved}
-                                onClick={() => { 
+                                onClick={() => {
                                     batchDelete();
-                                    setShowContextMenu(false); 
+                                    setShowContextMenu(false);
                                 }}
                                 className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${isReserved ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-red-900/50 text-red-300 cursor-pointer'}`}
                             >
@@ -214,137 +253,122 @@ export default function MemberCardContextMenu({ member, contextMenuPosition, onC
             </Popover.Root>
 
             {/* 公會子選單 */}
-            <Popover.Root open={showGuildMenu} onOpenChange={setShowGuildMenu}>
-                <Popover.Portal>
-                    <Popover.Content
-                        onPointerDown={(e) => e.stopPropagation()}
-                        className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 z-[10001] min-w-[200px] max-h-64 overflow-y-auto"
-                        side="right"
-                        align="start"
-                        sideOffset={5}
-                        style={{
-                            position: 'fixed',
-                            top: `${menuPosition.y}px`,
-                            left: `${menuPosition.x + 160}px`,
-                        }}
-                    >
-                        {localGuilds
-                            .filter(g => g.id !== member.guildId)
-                            .sort((a, b) => {
-                                const tierA = a.tier ?? 999;
-                                const tierB = b.tier ?? 999;
-                                if (tierA !== tierB) return tierA - tierB;
+            {showGuildMenu && (
+                <div
+                    onPointerDownCapture={(e) => e.stopPropagation()}
+                    className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 z-[10001] min-w-[200px] max-h-64 overflow-y-auto"
+                    style={{
+                        position: 'fixed',
+                        top: `${menuPosition.y}px`,
+                        left: `${menuPosition.x + 160}px`,
+                    }}
+                >
+                    {localGuilds
+                        .filter(g => g.id !== member.guildId)
+                        .sort((a, b) => {
+                            const tierA = a.tier ?? 999;
+                            const tierB = b.tier ?? 999;
+                            if (tierA !== tierB) return tierA - tierB;
 
-                                const orderA = a.orderNum ?? 999;
-                                const orderB = b.orderNum ?? 999;
-                                return orderA - orderB;
-                            })
-                            .map(g => (
-                                <button
-                                    key={g.id}
-                                    onClick={() => {
-                                        withSelectedId(() => {
-                                            batchMoveToGuild(g.id!);
-                                            setShowGuildMenu(false);
-                                            setShowContextMenu(false);
-                                        });
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-900/50 text-gray-200 cursor-pointer"
-                                >
-                                    {g.name}
-                                </button>
-                            ))}
-                    </Popover.Content>
-                </Popover.Portal>
-            </Popover.Root>
-
-            {/* 顏色子選單 */}
-            <Popover.Root open={showColorMenu} onOpenChange={setShowColorMenu}>
-                <Popover.Portal>
-                    <Popover.Content
-                        onPointerDown={(e) => e.stopPropagation()}
-                        className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-2 px-2 z-[10001] w-[140px] grid grid-cols-4 gap-1"
-                        side="right"
-                        align="start"
-                        sideOffset={5}
-                        style={{
-                            position: 'fixed',
-                            top: `${menuPosition.y}px`,
-                            left: `${menuPosition.x + 160}px`,
-                        }}
-                    >
-                        {COLORS.map(color => (
+                            const orderA = a.orderNum ?? 999;
+                            const orderB = b.orderNum ?? 999;
+                            return orderA - orderB;
+                        })
+                        .map(g => (
                             <button
-                                key={color.id}
+                                key={g.id}
                                 onClick={() => {
                                     withSelectedId(() => {
-                                        batchUpdateColor(color.id === 'default' ? undefined : color.id);
-                                        setShowColorMenu(false);
+                                        batchMoveToGuild(g.id!);
+                                        setShowGuildMenu(false);
                                         setShowContextMenu(false);
                                     });
                                 }}
-                                title={color.name}
-                                className={`w-6 h-6 rounded-full border ${color.buttonBg} ${color.buttonBorder} hover:scale-110 transition-transform`}
-                            />
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-900/50 text-gray-200 cursor-pointer"
+                            >
+                                {g.name}
+                            </button>
                         ))}
-                    </Popover.Content>
-                </Popover.Portal>
-            </Popover.Root>
+                </div>
+            )}
+
+            {/* 顏色子選單 */}
+            {showColorMenu && (
+                <div
+                    onPointerDownCapture={(e) => e.stopPropagation()}
+                    className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-2 px-2 z-[10001] w-[140px] grid grid-cols-4 gap-1"
+                    style={{
+                        position: 'fixed',
+                        top: `${menuPosition.y}px`,
+                        left: `${menuPosition.x + 160}px`,
+                    }}
+                >
+                    {COLORS.map(color => (
+                        <button
+                            key={color.id}
+                            onClick={() => {
+                                withSelectedId(() => {
+                                    batchUpdateColor(color.id === 'default' ? undefined : color.id);
+                                    setShowColorMenu(false);
+                                    setShowContextMenu(false);
+                                });
+                            }}
+                            title={color.name}
+                            className={`w-6 h-6 rounded-full border ${color.buttonBg} ${color.buttonBorder} hover:scale-110 transition-transform`}
+                        />
+                    ))}
+                </div>
+            )}
 
             {/* 身分子選單 */}
-            <Popover.Root open={showRoleMenu} onOpenChange={setShowRoleMenu}>
-                <Popover.Portal>
-                    <Popover.Content
-                        onPointerDown={(e) => e.stopPropagation()}
-                        className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 z-[10001] min-w-[120px]"
-                        side="right"
-                        align="start"
-                        sideOffset={5}
-                        style={{
-                            position: 'fixed',
-                            top: `${menuPosition.y}px`,
-                            left: `${menuPosition.x + 160}px`,
+            {showRoleMenu && (
+                <div
+                    onPointerDownCapture={(e) => e.stopPropagation()}
+                    className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 z-[10001] min-w-[120px]"
+                    style={{
+                        position: 'fixed',
+                        top: `${menuPosition.y}px`,
+                        left: `${menuPosition.x + 160}px`,
+                    }}
+                >
+                    <button
+                        onClick={() => {
+                            withSelectedId(() => {
+                                batchUpdateRole('leader');
+                                setShowRoleMenu(false);
+                                setShowContextMenu(false);
+                            });
                         }}
+                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'leader' ? 'text-yellow-400' : 'text-gray-200 hover:bg-gray-800'}`}
                     >
-                        <button
-                            onClick={() => {
-                                withSelectedId(() => {
-                                    batchUpdateRole('leader');
-                                    setShowRoleMenu(false);
-                                    setShowContextMenu(false);
-                                });
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'leader' ? 'text-yellow-400' : 'text-gray-200 hover:bg-gray-800'}`}
-                        >
-                            <Crown size={14} /> 會長
-                        </button>
-                        <button
-                            onClick={() => {
-                                withSelectedId(() => {
-                                    batchUpdateRole('coleader');
-                                    setShowRoleMenu(false);
-                                    setShowContextMenu(false);
-                                });
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'coleader' ? 'text-purple-400' : 'text-gray-200 hover:bg-gray-800'}`}
-                        >
-                            <Shield size={14} /> 副會長
-                        </button>
-                        <button
-                            onClick={() => {
-                                withSelectedId(() => {
-                                    batchUpdateRole('member');
-                                    setShowRoleMenu(false);
-                                    setShowContextMenu(false);
-                                });
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'member' ? 'text-gray-400' : 'text-gray-200 hover:bg-gray-800'}`}
-                        >
-                            <User size={14} /> 成員
-                        </button>
-                    </Popover.Content>
-                </Popover.Portal>
-            </Popover.Root>
+                        <Crown size={14} /> 會長
+                    </button>
+                    <button
+                        onClick={() => {
+                            withSelectedId(() => {
+                                batchUpdateRole('coleader');
+                                setShowRoleMenu(false);
+                                setShowContextMenu(false);
+                            });
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'coleader' ? 'text-purple-400' : 'text-gray-200 hover:bg-gray-800'}`}
+                    >
+                        <Shield size={14} /> 副會長
+                    </button>
+                    <button
+                        onClick={() => {
+                            withSelectedId(() => {
+                                batchUpdateRole('member');
+                                setShowRoleMenu(false);
+                                setShowContextMenu(false);
+                            });
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${member.role === 'member' ? 'text-gray-400' : 'text-gray-200 hover:bg-gray-800'}`}
+                    >
+                        <User size={14} /> 成員
+                    </button>
+                </div>
+            )}
 
         </>
     );

@@ -133,6 +133,13 @@ const initialState = {
     redoStack: [] as { local: Member[], staging: Member[], deleted: Member[] }[],
     selectedIds: new Set<string>(),
     isMultiSelectMode: false,
+    contextMenu: {
+        isOpen: false,
+        x: 0,
+        y: 0,
+        memberId: null,
+        isInDeletionArea: false,
+    },
     initialMemberStates: {} as Record<string, { guildId: string; note?: string; role?: Role; color?: string }>,
     isDraftInitialized: false,
     skipPersistUntilModified: true,
@@ -151,7 +158,15 @@ const initialState = {
 const MAX_HISTORY_STEPS = 30;
 
 const saveHistory = (state: typeof initialState & { archiveModal: typeof initialState.archiveModal }) => {
-    const nextHistory = [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }];
+    const nextHistory = [...state.history, {
+        local: state.localMembers,
+        staging: state.stagingMembers,
+        deleted: state.deletedMembers,
+        selectedIds: new Set(state.selectedIds),
+        isMultiSelectMode: state.isMultiSelectMode,
+        contextMenu: { ...state.contextMenu },
+    }];
+
     if (nextHistory.length > MAX_HISTORY_STEPS) {
         nextHistory.shift();
     }
@@ -335,8 +350,11 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                 localMembers: previous.local,
                 stagingMembers: previous.staging,
                 deletedMembers: previous.deleted,
+                selectedIds: new Set(previous.selectedIds),
+                isMultiSelectMode: previous.isMultiSelectMode,
+                contextMenu: previous.contextMenu ? { ...previous.contextMenu } : { ...initialState.contextMenu },
                 history: state.history.slice(0, -1),
-                redoStack: [...state.redoStack, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
+                redoStack: [...state.redoStack, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers, selectedIds: new Set(state.selectedIds), isMultiSelectMode: state.isMultiSelectMode, contextMenu: { ...state.contextMenu } }],
             };
         });
     },
@@ -350,7 +368,10 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                 localMembers: next.local,
                 stagingMembers: next.staging,
                 deletedMembers: next.deleted,
-                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
+                selectedIds: new Set(next.selectedIds),
+                isMultiSelectMode: next.isMultiSelectMode,
+                contextMenu: next.contextMenu ? { ...next.contextMenu } : { ...initialState.contextMenu },
+                history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers, selectedIds: new Set(state.selectedIds), isMultiSelectMode: state.isMultiSelectMode, contextMenu: { ...state.contextMenu } }],
                 redoStack: state.redoStack.slice(0, -1),
             };
         });
@@ -527,6 +548,31 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
     },
 
     setMultiSelectMode: (mode) => set({ isMultiSelectMode: mode }),
+
+    openContextMenu: (memberId, x, y, isInDeletionArea) => set((state) => {
+        const isMulti = state.isMultiSelectMode;
+        const member = state.localMembers.find(m => m.id === memberId) || state.stagingMembers.find(m => m.id === memberId);
+        const updatedSelectedIds = new Set(state.selectedIds);
+
+        if (member && !member.isReserved) {
+            if (isMulti) {
+                updatedSelectedIds.add(memberId);
+            } else {
+                updatedSelectedIds.clear();
+                updatedSelectedIds.add(memberId);
+            }
+        }
+
+        return {
+            contextMenu: { isOpen: true, memberId, x, y, isInDeletionArea },
+            selectedIds: updatedSelectedIds,
+        };
+    }),
+
+    closeContextMenu: () => set((state) => ({
+        contextMenu: { ...state.contextMenu, isOpen: false, memberId: null },
+        ...(state.isMultiSelectMode ? {} : { selectedIds: new Set() }),
+    })),
 
     clearSelection: () => set({ selectedIds: new Set() }),
 

@@ -12,10 +12,17 @@ export type MemberBoardState = {
     localGuilds: Guild[];
     stagingMembers: Member[];
     deletedMembers: Member[];
-    history: { local: Member[], staging: Member[], deleted: Member[] }[];
-    redoStack: { local: Member[], staging: Member[], deleted: Member[] }[];
+    history: { local: Member[], staging: Member[], deleted: Member[], selectedIds: Set<string>, isMultiSelectMode: boolean }[];
+    redoStack: { local: Member[], staging: Member[], deleted: Member[], selectedIds: Set<string>, isMultiSelectMode: boolean }[];
     selectedIds: Set<string>;
     isMultiSelectMode: boolean;
+    contextMenu: {
+        isOpen: boolean;
+        x: number;
+        y: number;
+        memberId: string | null;
+        isInDeletionArea: boolean;
+    };
     initialMemberStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string }>;
     isDraftInitialized: boolean;
     skipPersistUntilModified: boolean;
@@ -48,6 +55,8 @@ export type MemberBoardActions = {
     moveSelectedMembers: (targetGuildId: string) => void;
     toggleSelect: (id: string) => void;
     setMultiSelectMode: (mode: boolean) => void;
+    openContextMenu: (memberId: string, x: number, y: number, isInDeletionArea: boolean) => void;
+    closeContextMenu: () => void;
     clearSelection: () => void;
     setSelectedIds: (ids: Set<string>) => void;
     clearDeletedMembers: () => void;

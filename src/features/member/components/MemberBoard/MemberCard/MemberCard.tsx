@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import type { Member, Guild } from '@entities/member/types';
-import MemberCardContextMenu from './MemberCardContextMenu';
 import { useMemberBoardStore } from '../store/useMemberBoardStore';
 import {
     Tooltip,
@@ -46,9 +45,7 @@ export default function MemberCard({
     isInDeletionArea = false,
 }: Props) {
 
-    const { initialMemberStates, localGuilds } = useMemberBoardStore();
-
-    const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
+    const { initialMemberStates, localGuilds, openContextMenu } = useMemberBoardStore();
 
     const nameRef = useRef<HTMLDivElement>(null);
     const [isNameTruncated, setIsNameTruncated] = useState(false);
@@ -168,7 +165,7 @@ export default function MemberCard({
                         }}
                         onContextMenu={(e) => {
                             e.preventDefault();
-                            setContextMenuPosition({ x: e.clientX, y: e.clientY });
+                            openContextMenu(member.id!, e.clientX, e.clientY, isInDeletionArea);
                         }}
                     >
                         {member.isReserved && (
@@ -240,14 +237,6 @@ export default function MemberCard({
                             </Tooltip>
                         )}
 
-                        {/* 右鍵選單 */}
-                        <MemberCardContextMenu
-                            member={member}
-                            contextMenuPosition={contextMenuPosition}
-                            onCloseContextMenu={() => setContextMenuPosition(null)}
-                            originalGuild={finalOriginalGuild}
-                            isInDeletionArea={isInDeletionArea}
-                        />
                     </div>
                 </TooltipTrigger>
             </Tooltip>

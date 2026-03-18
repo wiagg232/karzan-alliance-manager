@@ -8,6 +8,7 @@ import ZoomControls from './ZoomControls';
 import NotificationModal from './NotificationModal';
 import ArchiveModal from './ArchiveModal';
 import type { Member, Guild, TieredData } from '@entities/member/types';
+import MemberCardContextMenu from './MemberCard/MemberCardContextMenu';
 import StagingArea from './StagingArea';
 import DeletionArea from './DeletionArea';
 import ConnectionLines from './ConnectionLines';
@@ -27,6 +28,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
         saveToDatabase,
         isMultiSelectMode,
         setMultiSelectMode,
+        contextMenu,
         selectedIds,
         clearSelection,
         batchDelete,
@@ -133,19 +135,27 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
                 }
             }
 
-            // Clear selection on background click
-            if (selectedIds.size > 0) {
+            // Clear selection on background click (skip when context menu open)
+            if (selectedIds.size > 0 && !contextMenu.isOpen) {
                 const target = e.target as HTMLElement;
-                const isInteractive = target.closest(
-                    '.member-card, .guild-section, .staging-area, .deletion-area, .batch-action-bar, .top-controls, button, [role="button"], [data-radix-popper-content-wrapper], .radix-popover-content, [data-radix-popover-content], .radix-dropdown-menu, [data-radix-dropdown-menu]'
-                );
-                if (!isInteractive) {
+                const popoverSelector = '.member-card, .guild-section, .staging-area, .deletion-area, .batch-action-bar, .top-controls, button, [role="button"], [data-radix-popper-content-wrapper], .radix-popover-content, [data-radix-popover-content], .radix-dropdown-menu, [data-radix-dropdown-menu]';
+                const isInteractive = Boolean(target.closest(popoverSelector));
+
+                const path = e.composedPath ? e.composedPath() : [];
+                const isInPathInteractive = path.some((node) => {
+                    if (node instanceof HTMLElement) {
+                        return node.matches?.(popoverSelector);
+                    }
+                    return false;
+                });
+
+                if (!isInteractive && !isInPathInteractive) {
                     clearSelection();
                 }
             }
         };
-        window.addEventListener('pointerdown', handleGlobalPointerDown, { capture: true });
-        return () => window.removeEventListener('pointerdown', handleGlobalPointerDown, { capture: true });
+        window.addEventListener('pointerdown', handleGlobalPointerDown);
+        return () => window.removeEventListener('pointerdown', handleGlobalPointerDown);
     }, [selectedIds, clearSelection]);
 
 
@@ -224,6 +234,8 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
 
             <StagingArea />
             <DeletionArea />
+
+            <MemberCardContextMenu />
 
             <NotificationModal />
             <ArchiveModal />
