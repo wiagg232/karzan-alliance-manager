@@ -13,9 +13,10 @@ if (!supabaseUrl || !supabaseKey) {
 const rawSupabase = (supabaseUrl && supabaseKey)
     ? createClient(supabaseUrl, supabaseKey, {
         auth: {
+            storageKey: 'kazran-auth-token',
             autoRefreshToken: true,
             persistSession: true,
-            detectSessionInUrl: true // 👈 確保這個是 true
+            detectSessionInUrl: true
         }
     })
     : null as any; // Cast to any to avoid type errors if null
