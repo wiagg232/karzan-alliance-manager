@@ -4,78 +4,38 @@ import { useAppContext } from '@/store';
 import { Shield, Users, ChevronRight, Lock, X, AlertCircle, Info } from 'lucide-react';
 import { getTierColor, getTierTextColor, getTierBorderHoverClass, getTierTextHoverClass } from '@/shared/lib/utils';
 import { useTranslation } from 'react-i18next';
+
+import { LoginModal } from '@/shared/ui/LoginModal';
 import { supabase } from '@/shared/api/supabase';
 import { logEvent } from '@/analytics';
 
-const DOMAIN_SUFFIX = '@kazran.com';
 
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { db, fetchAllMembers, setCurrentView, setCurrentUser, currentUser, isRoleLoading } = useAppContext();
-  const [selectedGuildForLogin, setSelectedGuildForLogin] = useState<{ id: string, name: string } | null>(null);
-  const [guildPassword, setGuildPassword] = useState('');
+  const { db, fetchAllMembers, setCurrentView, setCurrentUser, currentUser, isRoleLoading, userRoles, userRole } = useAppContext();
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-  const userRole = currentUser ? db.users[currentUser]?.role : null;
   const canSeeAllGuilds = userRole === 'admin' || userRole === 'creator' || userRole === 'manager';
-  const userGuildId = !canSeeAllGuilds && currentUser ? Object.entries(db.guilds).find(([_, g]) => g.username === currentUser)?.[0] : null;
 
   useEffect(() => {
     fetchAllMembers();
-  }, []);
+  }, [currentUser]);
 
   const handleGuildSelect = async (guildId: string, guildName: string) => {
     if (currentUser) {
-      if (!canSeeAllGuilds && guildId !== userGuildId) return;
+      const guild = db.guilds[guildId];
+      const hasAccess = canSeeAllGuilds || userRoles.includes(guild?.username || '') || userRoles.includes(guild?.name || '');
+      if (!hasAccess) return;
       navigate(`/guild/${guildId}`);
       return;
     }
 
-    setSelectedGuildForLogin({ id: guildId, name: guildName });
-    setGuildPassword('');
-    setError('');
-  };
-
-  const handleGuildLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedGuildForLogin) return;
-
-    const guild = db.guilds[selectedGuildForLogin.id];
-    const username = guild?.username;
-
-    if (!username) {
-      setError(t('login.no_login_account'));
-      return;
-    }
-
+    setIsLoginModalOpen(true);
     setIsVerifying(true);
     setError('');
-
-    try {
-      const formattedEmail = `${username.toLowerCase()}${DOMAIN_SUFFIX}`;
-
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: formattedEmail,
-        password: guildPassword,
-      });
-
-      if (authError) {
-        throw new Error(t('login.wrong_password'));
-      }
-
-      logEvent('User', 'Login', username.toLowerCase());
-
-      setCurrentUser(username.toLowerCase());
-      await fetchAllMembers();
-      navigate(`/guild/${selectedGuildForLogin.id}`);
-    } catch (error: any) {
-      setError(error.message);
-      console.error(t('login.login_failed'), error);
-    } finally {
-      setIsVerifying(false);
-    }
   };
 
   const sortedGuilds = React.useMemo(() => {
@@ -164,7 +124,7 @@ export default function Login() {
                       <div key={tier} className="space-y-3">
                         <h3 className={`font-bold text-center py-2 rounded-lg border ${getTierColor(tier)}`}>{t('guilds.tier')} {tier}</h3>
                         {tierGuilds.map(([id, guild]: [string, any]) => {
-                          const isDisabled = currentUser && !canSeeAllGuilds && id !== userGuildId;
+                          const isDisabled = currentUser && !canSeeAllGuilds && !userRoles.includes(guild.username || '') && !userRoles.includes(guild.name || '');
                           const stats = guildStats[id] || { rate: 0, is100: false, count: 0 };
                           const { rate: newCostumeRate, is100 } = stats;
 
@@ -173,7 +133,7 @@ export default function Login() {
 
                           const showPercent = currentUser && indexPercentType === 'new_costumes_owned';
 
-                          let textClasses = (showPercent && is100) ? getTierTextColor(tier) : `font-medium transition-colors text-stone-800 dark:text-stone-200 ${getTierTextHoverClass(tier)}`;
+                          let textClasses = (showPercent && is100) ? getTierTextColor(tier) : `font-medium transition-colors ${getTierTextHoverClass(tier)}`;
                           let iconClasses = `w-5 h-5 transition-colors ${isDisabled ? 'text-stone-300 dark:text-stone-600' : getTierTextHoverClass(tier)}`;
 
                           if (isDisabled) {
@@ -205,10 +165,10 @@ export default function Login() {
                               {showPercent && (
                                 <div
                                   className={`absolute left-0 top-0 bottom-0 transition-all duration-1000 ${is100
-                                      ? 'bg-amber-500 opacity-10 dark:opacity-20'
-                                      : isDisabled
-                                        ? 'bg-stone-300 dark:bg-stone-600 opacity-20'
-                                        : 'bg-stone-400 opacity-10 dark:opacity-20'
+                                    ? 'bg-amber-500 opacity-10 dark:opacity-20'
+                                    : isDisabled
+                                      ? 'bg-stone-300 dark:bg-stone-600 opacity-20'
+                                      : 'bg-stone-400 opacity-10 dark:opacity-20'
                                     }`}
                                   style={{ width: `${newCostumeRate}%` }}
                                 />
@@ -240,55 +200,11 @@ export default function Login() {
         </div>
       </div>
 
-      {selectedGuildForLogin && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
-            <div className="bg-stone-50 dark:bg-stone-700 px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200 dark:border-stone-600 flex justify-between items-center">
-              <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2 text-stone-800 dark:text-stone-200">
-                <Shield className="w-6 h-6 text-amber-600" /> {t('login.enter_guild', { guildName: selectedGuildForLogin.name })}
-              </h2>
-              <button onClick={() => setSelectedGuildForLogin(null)} className="p-2 hover:bg-stone-200 dark:hover:bg-stone-600 rounded-full transition-colors">
-                <X className="w-5 h-5 text-stone-500 dark:text-stone-400" />
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-6">
-              <form onSubmit={handleGuildLogin} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-stone-600 dark:text-stone-400 mb-1">{t('login.guild_password')}</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400 dark:text-stone-500" />
-                    <input
-                      type="password"
-                      className="w-full pl-10 pr-4 py-2 border border-stone-300 dark:border-stone-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-stone-800 dark:bg-stone-700 dark:text-stone-100"
-                      value={guildPassword}
-                      onChange={e => setGuildPassword(e.target.value)}
-                      placeholder={t('login.enter_password')}
-                      autoFocus
-                    />
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/30 p-2 rounded border border-red-100 dark:border-red-800">
-                    <AlertCircle className="w-4 h-4" />
-                    {error}
-                  </div>
-                )}
-
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    disabled={isVerifying}
-                    className="w-full py-2 bg-stone-800 dark:bg-stone-600 text-white hover:bg-stone-700 dark:hover:bg-stone-500 rounded-lg font-medium transition-colors disabled:opacity-50"
-                  >
-                    {isVerifying ? t('login.verifying') : t('login.enter')}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+      {isLoginModalOpen && (
+        <LoginModal onClose={() => {
+          setIsLoginModalOpen(false);
+          setIsVerifying(false);
+        }} />
       )}
     </div>
   );

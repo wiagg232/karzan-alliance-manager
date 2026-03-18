@@ -13,7 +13,7 @@ import { supabase } from '@/shared/api/supabase';
 export default function GuildDashboard({ guildId }: { guildId: string }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { db, setCurrentView, currentUser, isMembersLoading } = useAppContext();
+  const { db, setCurrentView, currentUser, isMembersLoading, userRoles, userRole } = useAppContext();
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -109,12 +109,13 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
     });
   };
 
-  const userRole = currentUser ? db.users[currentUser]?.role : null;
   const canSeeAllGuilds = userRole === 'admin' || userRole === 'creator' || userRole === 'manager';
-  const userGuildId = !canSeeAllGuilds && currentUser ? Object.entries(db.guilds).find(([_, g]) => g.username === currentUser)?.[0] : null;
+  const userGuilds = !canSeeAllGuilds && userRoles.length > 0 ? Object.entries(db.guilds).filter(([_, g]) => userRoles.includes(g.username || '') || userRoles.includes(g.name || '')) : [];
+  const hasAccessToGuild = canSeeAllGuilds || userGuilds.some(([id, _]) => id === guildId);
 
   // Redirect or block if trying to access another guild as a guild user
-  if (currentUser && !canSeeAllGuilds && guildId !== userGuildId) {
+  if (currentUser && !hasAccessToGuild) {
+    const defaultGuildId = userGuilds.length > 0 ? userGuilds[0][0] : null;
     return (
       <div className="h-screen flex flex-col">
         <div className="flex-1 flex items-center justify-center bg-stone-100 dark:bg-stone-900">
@@ -123,7 +124,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
             <h2 className="text-xl font-bold text-stone-800 dark:text-stone-200 mb-2">{t('errors.permission')}</h2>
             <p className="text-stone-500 dark:text-stone-400 mb-6">{t('dashboard.no_permission')}</p>
             <button
-              onClick={() => userGuildId && navigate(`/guild/${userGuildId}`)}
+              onClick={() => defaultGuildId && navigate(`/guild/${defaultGuildId}`)}
               className="px-6 py-2 bg-stone-800 dark:bg-stone-600 text-white rounded-lg hover:bg-stone-700 dark:hover:bg-stone-500 transition-colors"
             >
               {t('dashboard.return_to_guild')}
@@ -263,8 +264,11 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
   };
 
   const sortedGuilds = React.useMemo(() => {
-    return (Object.entries(db.guilds) as [string, any][])
-      .filter(([id, _]) => canSeeAllGuilds || id === userGuildId)
+    const guildsToDisplay = canSeeAllGuilds
+      ? Object.entries(db.guilds)
+      : Object.entries(db.guilds).filter(([_, g]) => userRoles.includes(g.username || '') || userRoles.includes(g.name || ''));
+
+    return (guildsToDisplay as [string, any][])
       .sort((a, b) => {
         const tierA = a[1].tier || 99;
         const tierB = b[1].tier || 99;
@@ -273,7 +277,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
         const orderB = b[1].orderNum || 99;
         return orderA - orderB;
       });
-  }, [db.guilds, canSeeAllGuilds, userGuildId]);
+  }, [db.guilds, canSeeAllGuilds, userRoles]);
 
   return (
     <div className="h-screen bg-stone-100 dark:bg-stone-900 flex flex-col overflow-hidden">

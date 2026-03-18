@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Database, Guild, Member, Costume, Role, User, Character, ArchivedMember, ArchiveHistory, Toast, ToastType, Setting, ApplyMail, AccessControl } from '@/entities/member/types';
-import { supabase, supabaseInsert, supabaseUpdate, supabaseUpsert, toCamel } from '@/shared/api/supabase';
+import { supabase, supabaseInsert, supabaseKey, supabaseUpdate, supabaseUpsert, toCamel } from '@/shared/api/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/shared/lib/utils';
@@ -11,11 +11,6 @@ const defaultData: Database = {
   members: {},
   characters: {},
   costumes: {},
-  users: {
-    "creator": { username: "creator", role: "creator" },
-    "admin": { username: "admin", role: "admin" },
-    "manager": { username: "manager", role: "manager" }
-  },
   settings: {},
   applyMails: {},
   accessControl: {}
@@ -37,6 +32,9 @@ interface AppContextType {
   setCurrentView: React.Dispatch<React.SetStateAction<ViewState>>;
   currentUser: string | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<string | null>>;
+  userRoles: string[];
+  setUserRoles: React.Dispatch<React.SetStateAction<string[]>>;
+  userRole: User['role'] | null;
 
   // Member functions
   fetchMembers: (guildId: string, columns?: string) => void;
@@ -66,12 +64,6 @@ interface AppContextType {
   updateCostume: (costumeId: string, data: Partial<Costume>) => Promise<void>;
   deleteCostume: (costumeId: string) => Promise<void>;
   updateCostumesOrder: (newOrder: Costume[]) => Promise<void>;
-
-  // User functions
-  updateUserPassword: (username: string, password: string) => Promise<void>;
-  updateUserRole: (username: string, role: User['role']) => Promise<void>;
-  addUser: (user: User) => Promise<void>;
-  deleteUser: (username: string) => Promise<void>;
 
   // Settings functions
   updateSetting: (id: string, updates: Partial<Setting>) => Promise<void>;
@@ -109,7 +101,6 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useTranslation();
-  const SESSION_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
 
   const [db, setDbState] = useState<Database>(defaultData);
   const [currentView, setCurrentViewState] = useState<ViewState>(() => {
@@ -133,21 +124,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const [currentUser, setCurrentUserState] = useState<string | null>(() => {
-    const user = localStorage.getItem('currentUser');
-    const loginTime = localStorage.getItem('loginTimestamp');
-
-    if (user && loginTime) {
-      const now = Date.now();
-      if (now - parseInt(loginTime, 10) > SESSION_TIMEOUT) {
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('loginTimestamp');
-        return null;
-      }
-      return user;
-    }
-    return null;
-  });
+  const [currentUser, setCurrentUserState] = useState<string | null>(null);
+  const [userRoles, setUserRolesState] = useState<string[]>([]);
+  const [userRole, setUserRole] = useState<User['role'] | null>(null);
 
   const [isRoleLoading, setIsRoleLoading] = useState(false);
   const [isMembersLoading, setIsMembersLoading] = useState(false);
@@ -155,94 +134,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setCurrentUser = (user: string | null) => {
     setCurrentUserState(user);
     setUserId(user);
-    if (user) {
-      localStorage.setItem('currentUser', user);
-      localStorage.setItem('loginTimestamp', Date.now().toString());
-    } else {
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('loginTimestamp');
+    if (!user) {
+      setUserRolesState([]);
+      setUserRole(null);
     }
   };
 
-  // 新增：抓取當前登入者權限的函數
-  const fetchCurrentUserRole = async (username: string) => {
-    setIsRoleLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('username', username) // 只抓自己的資料
-        .single(); // 我們預期只會有一筆
-
-      if (error) {
-        // PGRST116 means no rows found, which is expected for regular users not in admin_users table
-        if (error.code !== 'PGRST116') {
-          console.error("無法取得使用者權限:", error);
-        } else {
-          // For regular users, we can set a default 'member' role in local state if they are logged in
-          setDbState(prev => ({
-            ...prev,
-            users: {
-              ...prev.users,
-              [username]: { username, role: 'member' }
-            }
-          }));
-        }
-        return;
-      }
-
-      if (data) {
-        setDbState(prev => ({
-          ...prev,
-          users: {
-            ...prev.users,
-            [data.username]: toCamel(data) // 把抓到的權限更新進去
-          }
-        }));
-      }
-    } catch (err) {
-      console.error("取得權限發生錯誤:", err);
-    } finally {
-      setIsRoleLoading(false);
-    }
+  const setUserRoles = (roles: string[]) => {
+    setUserRolesState(roles);
   };
 
-  useEffect(() => {
-    const checkSession = () => {
-      if (currentUser) {
-        const loginTime = localStorage.getItem('loginTimestamp');
-        if (loginTime) {
-          const now = Date.now();
-          if (now - parseInt(loginTime, 10) > SESSION_TIMEOUT) {
-            setCurrentUser(null);
-            setCurrentView(null);
-            showToast(t('common.session_expired'), 'warning');
-          } else {
-            // 如果 session 還有效，去抓這個人的真實權限
-            fetchCurrentUserRole(currentUser);
-          }
-        } else {
-          // 如果有 currentUser 但沒有 timestamp（防呆），也去抓權限
-          fetchCurrentUserRole(currentUser);
-        }
-      }
-    };
-
-    // 網頁剛載入或 currentUser 改變時執行一次
-    checkSession();
-
-    const interval = setInterval(checkSession, 3600000); // Check every hour
-    return () => clearInterval(interval);
-  }, [currentUser]);
   const [loadedStates, setLoadedStates] = useState({
     global: false,
     guilds: false,
     costumes: false,
-    characters: false,
-    users: false
+    characters: false
   });
 
-  const isLoaded = loadedStates.global && loadedStates.guilds && loadedStates.costumes && loadedStates.users && loadedStates.characters;
+  const isLoaded = loadedStates.global && loadedStates.guilds && loadedStates.costumes && loadedStates.characters;
 
   const [isOffline, setIsOffline] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -296,16 +205,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     initAuth();
 
-    let subscription: { unsubscribe: () => void } | null = null;
-    if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT') {
-          setCurrentUser(null);
-          setCurrentView(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const discordUsername = session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email?.split('@')[0];
+        setCurrentUserState(discordUsername);
+
+        // Get role from metadata
+        const role = session.user.user_metadata.role || 'member';
+        setUserRole(role);
+
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          if (session.user.app_metadata.provider === 'discord') {
+            setIsRoleLoading(true);
+            try {
+              const discordId = session.user.identities?.find(i => i.provider === 'discord')?.id || session.user.user_metadata.sub;
+
+              const { data, error } = await supabase.functions.invoke('sync-discord-roles', {
+                headers: {
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: {
+                  user_id: session.user.id,
+                  discord_id: discordId,
+                  username: discordUsername
+                }
+              });
+
+              if (error) {
+                console.error('Edge function returned an error:', error);
+              } else if (data) {
+                const roles = data.guild_roles ? data.guild_roles.split(',').map((r: string) => r.trim()) : [];
+                setUserRolesState(roles);
+                if (data.role) setUserRole(data.role);
+              }
+            } catch (error) {
+              console.error('Error invoking edge function:', error);
+            } finally {
+              setIsRoleLoading(false);
+            }
+          }
         }
-      });
-      subscription = data.subscription;
-    }
+      } else {
+        setCurrentUserState(null);
+        setUserRolesState([]);
+        setUserRole(null);
+        setCurrentViewState(null);
+      }
+    });
 
     const fetchInitialData = async () => {
       try {
@@ -342,12 +289,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           accessControl,
         }));
 
-        setLoadedStates({ global: true, guilds: true, costumes: true, characters: true, users: true });
+        setLoadedStates({ global: true, guilds: true, costumes: true, characters: true });
 
       } catch (error) {
         console.error("Error fetching initial data:", error);
         setIsOffline(true);
-        setLoadedStates({ global: true, guilds: true, costumes: true, characters: true, users: true });
+        setLoadedStates({ global: true, guilds: true, costumes: true, characters: true });
       }
     };
 
@@ -853,8 +800,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const archivedMember = toCamel(archivedData) as any;
-    const historyArray = archivedMember.membersArchiveHistory ? toCamel(archivedMember.membersArchiveHistory) as any[] : [];
+    const archivedMember = toCamel(archivedData) as ArchivedMember;
+    const historyArray = archivedMember.membersArchiveHistory ? toCamel(archivedMember.membersArchiveHistory) as ArchiveHistory[] : [];
 
     // Sort by archived_at descending to get the latest
     historyArray.sort((a, b) => new Date(b.archivedAt).getTime() - new Date(a.archivedAt).getTime());
@@ -1119,9 +1066,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.members) {
         await supabaseUpsert('members', Object.values(data.members));
       }
-      if (data.users) {
-        await supabaseUpsert('admin_users', Object.values(data.users));
-      }
 
       showToast(t('common.restore_success_msg'), 'success');
       setTimeout(() => window.location.reload(), 2000);
@@ -1131,60 +1075,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateUserPassword = async (username: string, password: string) => {
-    const { error } = await supabaseUpdate('admin_users', { password }, { username: username });
-    if (error) {
-      console.error('Error updating user password:', error);
-    } else {
-      setDbState(prev => ({
-        ...prev,
-        users: {
-          ...prev.users,
-          [username]: { ...prev.users[username], password }
-        }
-      }));
-    }
-  };
 
-  const updateUserRole = async (username: string, role: User['role']) => {
-    const { error } = await supabaseUpdate('admin_users', { role }, { username: username });
-    if (error) {
-      console.error('Error updating user role:', error);
-    } else {
-      setDbState(prev => ({
-        ...prev,
-        users: {
-          ...prev.users,
-          [username]: { ...prev.users[username], role }
-        }
-      }));
-    }
-  };
-
-  const addUser = async (user: User) => {
-    const { data, error } = await supabaseInsert('admin_users', user);
-    if (error) {
-      console.error('Error adding user:', error);
-    } else if (data) {
-      const addedUser = data[0] as User;
-      setDbState(prev => ({
-        ...prev,
-        users: { ...prev.users, [addedUser.username]: addedUser }
-      }));
-    }
-  };
-
-  const deleteUser = async (username: string) => {
-    const { error } = await supabase.from('admin_users').delete().eq('username', username);
-    if (error) {
-      console.error('Error deleting user:', error);
-    } else {
-      setDbState(prev => {
-        const { [username]: _, ...rest } = prev.users;
-        return { ...prev, users: rest };
-      });
-    }
-  };
 
   const updateSetting = async (id: string, updates: Partial<Setting>) => {
     if (isOffline) return;
@@ -1287,12 +1178,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      db, setDb, currentView, setCurrentView, currentUser, setCurrentUser,
+      db, setDb, currentView, setCurrentView, currentUser, setCurrentUser, userRoles, setUserRoles, userRole,
       fetchMembers, fetchAllMembers, searchMembers, addMember, updateMember, deleteMember, archiveMember, unarchiveMember, updateMemberCostumeLevel, updateMemberExclusiveWeapon,
       addGuild, updateGuild, deleteGuild,
       addCharacter, updateCharacter, deleteCharacter, updateCharactersOrder,
       addCostume, updateCostume, deleteCostume, updateCostumesOrder,
-      updateUserPassword, updateUserRole, addUser, deleteUser, updateSetting, fetchSettings,
+      updateSetting, fetchSettings,
       fetchApplyMails, addApplyMail, updateApplyMail, deleteApplyMail,
       updateAccessControl,
       restoreData, toasts, showToast, removeToast,

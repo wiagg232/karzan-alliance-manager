@@ -3,14 +3,14 @@ import camelcaseKeys from 'camelcase-keys';
 import snakecaseKeys from 'snakecase-keys';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
     console.warn('Missing Supabase URL or Anon Key in environment variables. Supabase features will be disabled.');
 }
 
 // 原始 client（不建議直接在業務程式碼中使用）
-const rawSupabase = (supabaseUrl && supabaseKey) 
+const rawSupabase = (supabaseUrl && supabaseKey)
     ? createClient(supabaseUrl, supabaseKey)
     : null as any; // Cast to any to avoid type errors if null
 

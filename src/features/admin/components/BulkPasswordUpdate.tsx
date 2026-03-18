@@ -61,9 +61,7 @@ export default function BulkPasswordUpdate() {
   };
 
   const handleImportCSV = async () => {
-    // 🔽 加入這兩行來檢查你的「身分證」狀態
     const { data: { session } } = await supabase.auth.getSession();
-    console.log("目前的登入狀態：", session);
 
     if (!session) {
       setStatus({ message: t('passwords.not_logged_in'), type: 'error' });
@@ -99,8 +97,6 @@ export default function BulkPasswordUpdate() {
               setIsImporting(false);
               return;
             }
-
-            console.log("準備送給 Edge Function 的陣列：", updatesArray);
 
             // 🚨 修改重點 3：把 data 也抓出來，用來讀取後端回傳的處理結果
             const { data, error } = await supabase.functions.invoke('update-password', {

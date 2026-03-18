@@ -52,9 +52,7 @@ export default function SinglePasswordUpdate() {
     e.preventDefault();
     setStatus({ message: '', type: null });
 
-    // 🔽 加入這兩行來檢查你的「身分證」狀態
     const { data: { session } } = await supabase.auth.getSession();
-    console.log("目前的登入狀態：", session);
 
     if (!session) {
       setStatus({ message: t('passwords.not_logged_in'), type: 'error' });
@@ -94,9 +92,6 @@ export default function SinglePasswordUpdate() {
           ]
         }
       });
-
-      // 🔽 請在 invoke 執行完之後，立刻加上這行 console.log
-      console.log("Edge Function 詳細回傳內容：", data);
 
       if (error) {
         console.error('Edge Function Error:', error);
