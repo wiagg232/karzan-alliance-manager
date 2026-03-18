@@ -225,6 +225,33 @@ export default function ToolsManager() {
     });
   };
 
+  const fetchAllRows = async (tableName: string) => {
+    let allData: any[] = [];
+    let from = 0;
+    const limit = 1000;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .range(from, from + limit - 1);
+        
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        allData = [...allData, ...data];
+      }
+      
+      if (!data || data.length < limit) {
+        break;
+      }
+      
+      from += limit;
+    }
+    
+    return allData;
+  };
+
   const handleBackup = async () => {
     setIsProcessing(true);
     try {
@@ -242,9 +269,7 @@ export default function ToolsManager() {
       const backupData: Record<string, any> = {};
       
       for (const table of tables) {
-        const { data, error } = await supabase.from(table).select('*');
-        if (error) throw error;
-        backupData[table] = data;
+        backupData[table] = await fetchAllRows(table);
       }
 
       const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
@@ -274,9 +299,7 @@ export default function ToolsManager() {
       const backupData: Record<string, any> = {};
       
       for (const table of tables) {
-        const { data, error } = await supabase.from(table).select('*');
-        if (error) throw error;
-        backupData[table] = data;
+        backupData[table] = await fetchAllRows(table);
       }
 
       const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
