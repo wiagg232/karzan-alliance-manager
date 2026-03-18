@@ -10,10 +10,9 @@ import BchelinGame from '../components/BchelinGame';
 export default function Arcade() {
   const { t } = useTranslation('arcade');
   const navigate = useNavigate();
-  const { setCurrentView, currentUser, db } = useAppContext();
+  const { userRole } = useAppContext();
   const [activeGame, setActiveGame] = useState<string | null>(null);
 
-  const userRole = currentUser ? db.users[currentUser]?.role : null;
   const isCreator = userRole === 'creator';
 
   switch (activeGame) {

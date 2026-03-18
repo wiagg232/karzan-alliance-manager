@@ -84,7 +84,6 @@ export interface Database {
   members: Record<string, Member>;
   characters: Record<string, Character>;
   costumes: Record<string, Costume>;
-  users: Record<string, User>;
   settings: Record<string, Setting>;
   applyMails: Record<string, ApplyMail>;
   accessControl: Record<string, AccessControl>;

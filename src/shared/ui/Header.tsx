@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '@/store';
-import { 
-  Shield, LogIn, LogOut, Settings, Users, User, Lock, 
-  AlertCircle, X, Globe, Volume2, VolumeX, Sun, Moon, 
-  Monitor, Layout, Mail, Gamepad2, Trophy, BookUser, 
-  Wrench, Menu, ChevronDown, ChevronUp 
+import {
+  Shield, LogIn, LogOut, Settings, Users, User, Lock,
+  AlertCircle, X, Globe, Volume2, VolumeX, Sun, Moon,
+  Monitor, Layout, Mail, Gamepad2, Trophy, BookUser,
+  Wrench, Menu, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/app/providers/ThemeContext';
@@ -19,7 +19,7 @@ const DOMAIN_SUFFIX = '@kazran.com';
 
 function LoginModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
-  const { setCurrentUser, fetchAllMembers, fetchInitialData } = useAppContext();
+  const { setCurrentUser, fetchAllMembers } = useAppContext();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -44,7 +44,6 @@ function LoginModal({ onClose }: { onClose: () => void }) {
 
       setCurrentUser(username.toLowerCase());
       await fetchAllMembers();
-      if (fetchInitialData) await fetchInitialData(); // 確保登入後能立即抓取最新資料
       onClose();
     } catch (error: any) {
       setError(error.message);
@@ -55,13 +54,13 @@ function LoginModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-stone-900/60 dark:bg-black/70 backdrop-blur-sm"
     >
-      <motion.div 
+      <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -136,7 +135,7 @@ export default function Header() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { db, currentUser, setCurrentUser, userVolume, setUserVolume, isRoleLoading } = useAppContext();
+  const { db, currentUser, currentAvatar, setCurrentUser, userVolume, setUserVolume, userRole, userGuildRoles, isRoleLoading } = useAppContext();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -181,22 +180,23 @@ export default function Header() {
     return orderA - orderB;
   });
 
-  const userRole = currentUser ? db.users[currentUser]?.role : null;
   const canSeeAllGuilds = userRole === 'admin' || userRole === 'creator' || userRole === 'manager';
 
   const canAccessPage = (pageId: string) => {
     // 🔒 防護 1：只要系統還在載入，為了安全，所有的敏感按鈕一律先藏起來！
     if (isRoleLoading) return false;
-  
+
     // 🔒 防護 2：如果規則表還沒抓回來，也一律當作沒權限 (避免函式預設放行)
     if (!db.accessControl || Object.keys(db.accessControl).length === 0) {
-       return false; 
+      return false;
     }
 
     return canUserAccessPage(pageId, userRole || undefined, db.accessControl);
   };
 
-  const userGuildId = !canSeeAllGuilds && currentUser ? Object.entries(db.guilds).find(([_, g]) => g.username === currentUser)?.[0] : null;
+  const userGuilds = !canSeeAllGuilds && userGuildRoles.length > 0 ? Object.entries(db.guilds).filter(([_, g]) => userGuildRoles.includes(g.username || '') || userGuildRoles.includes(g.name || '')) : [];
+  const userGuildId = userGuilds.length > 0 ? userGuilds[0][0] : null;
+
   const topGuildId = canSeeAllGuilds ? (sortedGuilds.length > 0 ? sortedGuilds[0][0] : null) : userGuildId;
 
   const navItems = [
@@ -221,21 +221,21 @@ export default function Header() {
 
   const containerVariants: any = {
     hidden: { height: 0, opacity: 0 },
-    visible: { 
-      height: 'auto', 
+    visible: {
+      height: 'auto',
       opacity: 1,
-      transition: { 
-        duration: 0.4, 
+      transition: {
+        duration: 0.4,
         ease: [0.23, 1, 0.32, 1],
         when: "beforeChildren",
         staggerChildren: 0.05
       }
     },
-    exit: { 
-      height: 0, 
+    exit: {
+      height: 0,
       opacity: 0,
-      transition: { 
-        duration: 0.3, 
+      transition: {
+        duration: 0.3,
         ease: [0.23, 1, 0.32, 1],
         when: "afterChildren"
       }
@@ -252,7 +252,7 @@ export default function Header() {
     <>
       <header className="bg-stone-950/80 backdrop-blur-md text-white border-b border-stone-800 shrink-0 sticky top-0 z-[100]" ref={menuRef}>
         <div className="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
-          <div 
+          <div
             className="flex items-center gap-3 cursor-pointer group"
             onClick={() => navigate('/')}
           >
@@ -268,9 +268,8 @@ export default function Header() {
           <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 ${
-                isMenuOpen ? 'bg-amber-500 text-stone-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]' : 'bg-stone-900 hover:bg-stone-800 text-stone-300'
-              }`}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-300 ${isMenuOpen ? 'bg-amber-500 text-stone-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]' : 'bg-stone-900 hover:bg-stone-800 text-stone-300'
+                }`}
             >
               <Menu className={`w-5 h-5 transition-transform duration-500 ${isMenuOpen ? 'rotate-90' : ''}`} />
               <span className="text-xs sm:text-sm font-bold uppercase tracking-wider hidden sm:inline">
@@ -318,11 +317,10 @@ export default function Header() {
                             navigate(item.path!);
                             setIsMenuOpen(false);
                           }}
-                          className={`flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-lg transition-all group ${
-                            item.active 
-                              ? 'bg-amber-500/10 text-amber-500' 
-                              : 'text-stone-400 hover:bg-stone-900 hover:text-white'
-                          }`}
+                          className={`flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-lg transition-all group ${item.active
+                            ? 'bg-amber-500/10 text-amber-500'
+                            : 'text-stone-400 hover:bg-stone-900 hover:text-white'
+                            }`}
                         >
                           <item.icon className={`w-5 h-5 ${item.active ? 'text-amber-500' : 'text-stone-500 group-hover:text-amber-400'}`} />
                           <span className="text-sm font-medium">{item.label}</span>
@@ -341,9 +339,14 @@ export default function Header() {
                     {currentUser ? (
                       <div className="p-4 bg-stone-900 rounded-xl border border-stone-800">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-stone-950 font-bold">
-                            {currentUser[0].toUpperCase()}
+
+                          <div className={`relative w-16 h-16`}>
+                            <img
+                              src={currentAvatar}
+                              className="w-full h-full object-cover rounded-full ring-2 ring-white/80 dark:ring-gray-800"
+                            />
                           </div>
+
                           <div>
                             <div className="text-sm font-bold text-white truncate max-w-[150px]">{currentUser}</div>
                             <div className="text-[10px] text-stone-500 uppercase tracking-wider">{userRole}</div>
@@ -383,9 +386,8 @@ export default function Header() {
                       <div className="relative" ref={volumeContainerRef}>
                         <button
                           onClick={() => hasBgm && toggleMute()}
-                          className={`w-full flex items-center justify-center gap-2 py-3.5 bg-stone-900 rounded-lg transition-all border border-stone-800 ${
-                            hasBgm ? 'hover:bg-stone-800 text-stone-400' : 'opacity-50 cursor-not-allowed'
-                          }`}
+                          className={`w-full flex items-center justify-center gap-2 py-3.5 bg-stone-900 rounded-lg transition-all border border-stone-800 ${hasBgm ? 'hover:bg-stone-800 text-stone-400' : 'opacity-50 cursor-not-allowed'
+                            }`}
                         >
                           {isMuted || !hasBgm ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                           <span className="text-xs font-medium">{t('settings.bgm')}</span>
@@ -403,22 +405,20 @@ export default function Header() {
                   <div className="grid gap-2">
                     <button
                       onClick={() => i18n.changeLanguage('zh-TW')}
-                      className={`flex items-center justify-between px-4 py-3.5 rounded-lg border transition-all ${
-                        i18n.language === 'zh-TW' 
-                          ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' 
-                          : 'bg-stone-900 border-stone-800 text-stone-400 hover:border-stone-700'
-                      }`}
+                      className={`flex items-center justify-between px-4 py-3.5 rounded-lg border transition-all ${i18n.language === 'zh-TW'
+                        ? 'bg-amber-500/10 border-amber-500/50 text-amber-500'
+                        : 'bg-stone-900 border-stone-800 text-stone-400 hover:border-stone-700'
+                        }`}
                     >
                       <span className="text-sm font-medium">繁體中文</span>
                       <Globe className="w-4 h-4 opacity-50" />
                     </button>
                     <button
                       onClick={() => i18n.changeLanguage('en')}
-                      className={`flex items-center justify-between px-4 py-3.5 rounded-lg border transition-all ${
-                        i18n.language === 'en' 
-                          ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' 
-                          : 'bg-stone-900 border-stone-800 text-stone-400 hover:border-stone-700'
-                      }`}
+                      className={`flex items-center justify-between px-4 py-3.5 rounded-lg border transition-all ${i18n.language === 'en'
+                        ? 'bg-amber-500/10 border-amber-500/50 text-amber-500'
+                        : 'bg-stone-900 border-stone-800 text-stone-400 hover:border-stone-700'
+                        }`}
                     >
                       <span className="text-sm font-medium">English</span>
                       <Globe className="w-4 h-4 opacity-50" />

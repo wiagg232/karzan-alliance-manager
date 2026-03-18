@@ -31,7 +31,7 @@ interface GuildRaidRecord {
 export default function AllianceRaidRecord() {
   const { t } = useTranslation(['raid', 'translation']);
   const navigate = useNavigate();
-  const { db, currentUser } = useAppContext();
+  const { db, userRole } = useAppContext();
 
   const [seasons, setSeasons] = useState<RaidSeason[]>([]);
   const [records, setRecords] = useState<GuildRaidRecord[]>([]);
@@ -53,7 +53,6 @@ export default function AllianceRaidRecord() {
   const [editingCell, setEditingCell] = useState<{ guild_id: string, season_id: string } | null>(null);
   const [editRecordData, setEditRecordData] = useState<{ score: number | '', rank: string }>({ score: '', rank: '' });
 
-  const userRole = currentUser ? db.users[currentUser]?.role : null;
   const canManage = userRole === 'manager' || userRole === 'admin' || userRole === 'creator';
 
   const fetchRaidData = async () => {
@@ -132,7 +131,7 @@ export default function AllianceRaidRecord() {
                 const { error: upsertError } = await supabase
                   .from('guild_raid_records')
                   .upsert(newGuildRecords, { onConflict: 'season_id,guild_id' });
-                
+
                 if (upsertError) {
                   console.error('Error copying previous season guild notes:', upsertError);
                 }
@@ -358,9 +357,9 @@ export default function AllianceRaidRecord() {
                           <button
                             onClick={() => {
                               setEditingSeasonId(season.id);
-                              setNewSeason({ 
-                                season_number: season.season_number, 
-                                period_text: season.period_text, 
+                              setNewSeason({
+                                season_number: season.season_number,
+                                period_text: season.period_text,
                                 description: season.description,
                                 even_rounds: season.even_rounds || false
                               });

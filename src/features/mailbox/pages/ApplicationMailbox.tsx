@@ -22,7 +22,7 @@ type ApplicationStatus = 'pending' | 'acknowledged' | 'rejected' | 'discuss' | '
 
 export default function ApplicationMailbox() {
   const { t } = useTranslation(['mailbox', 'translation']);
-  const { currentUser, db, fetchApplyMails, addApplyMail, updateApplyMail, deleteApplyMail, showToast } = useAppContext();
+  const { db, fetchApplyMails, addApplyMail, updateApplyMail, deleteApplyMail, showToast, userRole } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -53,7 +53,6 @@ export default function ApplicationMailbox() {
     return app.subject === filter;
   });
 
-  const userRole = currentUser ? db.users[currentUser]?.role : null;
   const isPrivileged = userRole === 'creator' || userRole === 'admin' || userRole === 'manager';
 
   const totalPages = Math.ceil(filteredApplications.length / itemsPerPage);

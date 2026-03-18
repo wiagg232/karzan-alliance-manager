@@ -248,7 +248,9 @@
     "login_btn": "Login",
     "theme_light": "Light Mode",
     "theme_dark": "Dark Mode",
-    "theme_system": "System Mode"
+    "theme_system": "System Mode",
+    "discord_login_desc": "Please log in with your Discord account",
+    "login_with_discord": "Login with Discord"
   },
   "login": {
     "no_login_account": "This guild has not set up a login account",

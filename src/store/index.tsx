@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Database, Guild, Member, Costume, Role, User, Character, ArchivedMember, ArchiveHistory, Toast, ToastType, Setting, ApplyMail, AccessControl } from '@/entities/member/types';
-import { supabase, supabaseInsert, supabaseUpdate, supabaseUpsert, toCamel } from '@/shared/api/supabase';
+import { supabase, supabaseInsert, supabaseKey, supabaseUpdate, supabaseUpsert, toCamel } from '@/shared/api/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/shared/lib/utils';
@@ -11,11 +11,6 @@ const defaultData: Database = {
   members: {},
   characters: {},
   costumes: {},
-  users: {
-    "creator": { username: "creator", role: "creator" },
-    "admin": { username: "admin", role: "admin" },
-    "manager": { username: "manager", role: "manager" }
-  },
   settings: {},
   applyMails: {},
   accessControl: {}
@@ -37,6 +32,10 @@ interface AppContextType {
   setCurrentView: React.Dispatch<React.SetStateAction<ViewState>>;
   currentUser: string | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<string | null>>;
+  currentAvatar: string | null;
+  userGuildRoles: string[];
+  setuserGuildRoles: React.Dispatch<React.SetStateAction<string[]>>;
+  userRole: User['role'] | null;
 
   // Initial data loading
   fetchInitialData: () => Promise<void>;
@@ -69,12 +68,6 @@ interface AppContextType {
   updateCostume: (costumeId: string, data: Partial<Costume>) => Promise<void>;
   deleteCostume: (costumeId: string) => Promise<void>;
   updateCostumesOrder: (newOrder: Costume[]) => Promise<void>;
-
-  // User functions
-  updateUserPassword: (username: string, password: string) => Promise<void>;
-  updateUserRole: (username: string, role: User['role']) => Promise<void>;
-  addUser: (user: User) => Promise<void>;
-  deleteUser: (username: string) => Promise<void>;
 
   // Settings functions
   updateSetting: (id: string, updates: Partial<Setting>) => Promise<void>;
@@ -112,7 +105,6 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useTranslation();
-  const SESSION_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
 
   const [db, setDbState] = useState<Database>(defaultData);
   const [currentView, setCurrentViewState] = useState<ViewState>(() => {
@@ -136,21 +128,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const [currentUser, setCurrentUserState] = useState<string | null>(() => {
-    const user = localStorage.getItem('currentUser');
-    const loginTime = localStorage.getItem('loginTimestamp');
-
-    if (user && loginTime) {
-      const now = Date.now();
-      if (now - parseInt(loginTime, 10) > SESSION_TIMEOUT) {
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('loginTimestamp');
-        return null;
-      }
-      return user;
-    }
-    return null;
-  });
+  const [currentAvatar, setCurrentAvatarState] = useState<string | null>(null);
+  const [currentUser, setCurrentUserState] = useState<string | null>(null);
+  const [userGuildRoles, setuserGuildRolesState] = useState<string[]>([]);
+  const [userRole, setUserRole] = useState<User['role'] | null>(null);
 
   const [isRoleLoading, setIsRoleLoading] = useState(false);
   const [isMembersLoading, setIsMembersLoading] = useState(false);
@@ -158,94 +139,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setCurrentUser = (user: string | null) => {
     setCurrentUserState(user);
     setUserId(user);
-    if (user) {
-      localStorage.setItem('currentUser', user);
-      localStorage.setItem('loginTimestamp', Date.now().toString());
-    } else {
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('loginTimestamp');
+    if (!user) {
+      setuserGuildRolesState([]);
+      setCurrentAvatarState(null);
+      setUserRole(null);
+
     }
   };
 
-  // 新增：抓取當前登入者權限的函數
-  const fetchCurrentUserRole = async (username: string) => {
-    setIsRoleLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('username', username) // 只抓自己的資料
-        .single(); // 我們預期只會有一筆
+  const setuserGuildRoles = (roles: string[]) => {
+    setuserGuildRolesState(roles);
+  };
 
-      if (error) {
-        // PGRST116 means no rows found, which is expected for regular users not in admin_users table
-        if (error.code !== 'PGRST116') {
-          console.error("無法取得使用者權限:", error);
-        } else {
-          // For regular users, we can set a default 'member' role in local state if they are logged in
-          setDbState(prev => ({
-            ...prev,
-            users: {
-              ...prev.users,
-              [username]: { username, role: 'member' }
-            }
-          }));
-        }
+  const loadDiscordRoles = async () => {
+    if (!supabase) return;
+
+    setIsRoleLoading(true);
+
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session?.user) return;
+
+      const user = session.user;
+      if (user.app_metadata?.provider !== 'discord') return;
+
+      const discordId = user.identities?.find((i: any) => i.provider === 'discord')?.id || user.user_metadata?.sub;
+      if (!discordId) return;
+
+      // 已有 profile 時不再呼叫
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, user_role, user_guilds, display_name, avatar_url')
+        .eq('discord_id', discordId)
+        .maybeSingle();
+
+      if (!profileError && existingProfile) {
+        setCurrentAvatarState(existingProfile.avatar_url);
+        setCurrentUserState(existingProfile.display_name);
+        setUserRole(existingProfile.user_role);
+        setuserGuildRolesState(existingProfile.user_guilds ? existingProfile.user_guilds.split(',').map((r: string) => r.trim()) : []);
         return;
       }
 
-      if (data) {
-        setDbState(prev => ({
-          ...prev,
-          users: {
-            ...prev.users,
-            [data.username]: toCamel(data) // 把抓到的權限更新進去
-          }
-        }));
+
+      const discordUsername = user.user_metadata?.full_name || user.user_metadata?.name;
+
+      const { data, error: invokeError } = await supabase.functions.invoke('sync-discord-roles', {
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: {
+          user_id: user.id,
+          discord_id: discordId,
+          username: discordUsername
+        }
+      });
+
+      if (invokeError) {
+        console.error('Edge function returned an error:', invokeError);
+      } else if (data) {
+        const roles = data.guildRoles ? data.guildRoles.split(',').map((r: string) => r.trim()) : [];
+        setCurrentAvatarState(data.avatarUrl);
+        setCurrentUserState(data.displayName);
+        setuserGuildRolesState(roles);
+        if (data.role) setUserRole(data.role);
       }
-    } catch (err) {
-      console.error("取得權限發生錯誤:", err);
+    } catch (error) {
+      console.error('Error invoking edge function:', error);
     } finally {
       setIsRoleLoading(false);
     }
   };
 
-  useEffect(() => {
-    const checkSession = () => {
-      if (currentUser) {
-        const loginTime = localStorage.getItem('loginTimestamp');
-        if (loginTime) {
-          const now = Date.now();
-          if (now - parseInt(loginTime, 10) > SESSION_TIMEOUT) {
-            setCurrentUser(null);
-            setCurrentView(null);
-            showToast(t('common.session_expired'), 'warning');
-          } else {
-            // 如果 session 還有效，去抓這個人的真實權限
-            fetchCurrentUserRole(currentUser);
-          }
-        } else {
-          // 如果有 currentUser 但沒有 timestamp（防呆），也去抓權限
-          fetchCurrentUserRole(currentUser);
-        }
-      }
-    };
-
-    // 網頁剛載入或 currentUser 改變時執行一次
-    checkSession();
-
-    const interval = setInterval(checkSession, 3600000); // Check every hour
-    return () => clearInterval(interval);
-  }, [currentUser]);
   const [loadedStates, setLoadedStates] = useState({
     global: false,
     guilds: false,
     costumes: false,
-    characters: false,
-    users: false
+    characters: false
   });
 
-  const isLoaded = loadedStates.global && loadedStates.guilds && loadedStates.costumes && loadedStates.users && loadedStates.characters;
+  const isLoaded = loadedStates.global && loadedStates.guilds && loadedStates.costumes && loadedStates.characters;
 
   const [isOffline, setIsOffline] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -268,51 +242,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
-  };
-
-  // 初始資料抓取函數
-  const fetchInitialData = async () => {
-    try {
-      const [guildsRes, charactersRes, costumesRes, settingsRes, accessControlRes] = await Promise.all([
-        supabase ? supabase.from('guilds').select('*') : { data: [], error: null },
-        supabase ? supabase.from('characters').select('*') : { data: [], error: null },
-        supabase ? supabase.from('costumes').select('*') : { data: [], error: null },
-        supabase ? supabase.from('settings').select('*') : { data: [], error: null },
-        supabase ? supabase.from('access_control').select('*') : { data: [], error: null },
-      ]);
-
-      if (guildsRes.error) throw guildsRes.error;
-      if (charactersRes.error) throw charactersRes.error;
-      if (costumesRes.error) throw costumesRes.error;
-      if (settingsRes.error) throw settingsRes.error;
-      // access_control might not exist yet, handle gracefully
-      const accessControlData = accessControlRes.error ? [] : accessControlRes.data;
-
-      const guilds = (guildsRes.data as any[] || []).reduce((acc, guild) => ({ ...acc, [guild.id]: toCamel(guild) }), {});
-      const characters = (charactersRes.data as any[] || []).reduce((acc, char) => ({ ...acc, [char.id]: toCamel(char) }), {});
-      const costumes = (costumesRes.data as any[] || []).reduce((acc, costume) => ({ ...acc, [costume.id]: toCamel(costume) }), {});
-      const settings = (settingsRes.data as any[] || []).reduce((acc, setting) => ({ ...acc, [setting.id]: toCamel(setting) }), {});
-      const accessControl = (accessControlData as any[] || []).reduce((acc, ac) => {
-        const camelAc = toCamel<AccessControl>(ac);
-        return { ...acc, [camelAc.page]: camelAc };
-      }, {});
-
-      setDbState(prev => ({
-        ...prev,
-        guilds,
-        characters,
-        costumes,
-        settings,
-        accessControl,
-      }));
-
-      setLoadedStates({ global: true, guilds: true, costumes: true, characters: true, users: true });
-
-    } catch (error) {
-      console.error("Error fetching initial data:", error);
-      setIsOffline(true);
-      setLoadedStates({ global: true, guilds: true, costumes: true, characters: true, users: true });
-    }
   };
 
   // Subscribe to global data (costumes, users) and guilds
@@ -344,16 +273,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     initAuth();
 
-    let subscription: { unsubscribe: () => void } | null = null;
-    if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT') {
-          setCurrentUser(null);
-          setCurrentView(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // 當 Discord 用戶第一次登入時，觸發 sync-discord-roles（註冊流程）
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          loadDiscordRoles();
         }
-      });
-      subscription = data.subscription;
-    }
+      } else {
+        setCurrentUserState(null);
+        setuserGuildRolesState([]);
+        setUserRole(null);
+        setCurrentViewState(null);
+        setCurrentAvatarState(null);
+      }
+    });
+
+    const fetchInitialData = async () => {
+      try {
+        const [guildsRes, charactersRes, costumesRes, settingsRes, accessControlRes] = await Promise.all([
+          supabase ? supabase.from('guilds').select('*') : { data: [], error: null },
+          supabase ? supabase.from('characters').select('*') : { data: [], error: null },
+          supabase ? supabase.from('costumes').select('*') : { data: [], error: null },
+          supabase ? supabase.from('settings').select('*') : { data: [], error: null },
+          supabase ? supabase.from('access_control').select('*') : { data: [], error: null },
+        ]);
+
+        if (guildsRes.error) throw guildsRes.error;
+        if (charactersRes.error) throw charactersRes.error;
+        if (costumesRes.error) throw costumesRes.error;
+        if (settingsRes.error) throw settingsRes.error;
+        // access_control might not exist yet, handle gracefully
+        const accessControlData = accessControlRes.error ? [] : accessControlRes.data;
+
+        const guilds = (guildsRes.data as any[] || []).reduce((acc, guild) => ({ ...acc, [guild.id]: toCamel(guild) }), {});
+        const characters = (charactersRes.data as any[] || []).reduce((acc, char) => ({ ...acc, [char.id]: toCamel(char) }), {});
+        const costumes = (costumesRes.data as any[] || []).reduce((acc, costume) => ({ ...acc, [costume.id]: toCamel(costume) }), {});
+        const settings = (settingsRes.data as any[] || []).reduce((acc, setting) => ({ ...acc, [setting.id]: toCamel(setting) }), {});
+        const accessControl = (accessControlData as any[] || []).reduce((acc, ac) => {
+          const camelAc = toCamel<AccessControl>(ac);
+          return { ...acc, [camelAc.page]: camelAc };
+        }, {});
+
+        setDbState(prev => ({
+          ...prev,
+          guilds,
+          characters,
+          costumes,
+          settings,
+          accessControl,
+        }));
+
+        setLoadedStates({ global: true, guilds: true, costumes: true, characters: true });
+
+      } catch (error) {
+        console.error("Error fetching initial data:", error);
+        setIsOffline(true);
+        setLoadedStates({ global: true, guilds: true, costumes: true, characters: true });
+      }
+    };
 
     fetchInitialData();
 
@@ -857,8 +834,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const archivedMember = toCamel(archivedData) as any;
-    const historyArray = archivedMember.membersArchiveHistory ? toCamel(archivedMember.membersArchiveHistory) as any[] : [];
+    const archivedMember = toCamel(archivedData) as ArchivedMember;
+    const historyArray = archivedMember.membersArchiveHistory ? toCamel(archivedMember.membersArchiveHistory) as ArchiveHistory[] : [];
 
     // Sort by archived_at descending to get the latest
     historyArray.sort((a, b) => new Date(b.archivedAt).getTime() - new Date(a.archivedAt).getTime());
@@ -1123,9 +1100,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.members) {
         await supabaseUpsert('members', Object.values(data.members));
       }
-      if (data.users) {
-        await supabaseUpsert('admin_users', Object.values(data.users));
-      }
 
       showToast(t('common.restore_success_msg'), 'success');
       setTimeout(() => window.location.reload(), 2000);
@@ -1135,60 +1109,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateUserPassword = async (username: string, password: string) => {
-    const { error } = await supabaseUpdate('admin_users', { password }, { username: username });
-    if (error) {
-      console.error('Error updating user password:', error);
-    } else {
-      setDbState(prev => ({
-        ...prev,
-        users: {
-          ...prev.users,
-          [username]: { ...prev.users[username], password }
-        }
-      }));
-    }
-  };
 
-  const updateUserRole = async (username: string, role: User['role']) => {
-    const { error } = await supabaseUpdate('admin_users', { role }, { username: username });
-    if (error) {
-      console.error('Error updating user role:', error);
-    } else {
-      setDbState(prev => ({
-        ...prev,
-        users: {
-          ...prev.users,
-          [username]: { ...prev.users[username], role }
-        }
-      }));
-    }
-  };
-
-  const addUser = async (user: User) => {
-    const { data, error } = await supabaseInsert('admin_users', user);
-    if (error) {
-      console.error('Error adding user:', error);
-    } else if (data) {
-      const addedUser = data[0] as User;
-      setDbState(prev => ({
-        ...prev,
-        users: { ...prev.users, [addedUser.username]: addedUser }
-      }));
-    }
-  };
-
-  const deleteUser = async (username: string) => {
-    const { error } = await supabase.from('admin_users').delete().eq('username', username);
-    if (error) {
-      console.error('Error deleting user:', error);
-    } else {
-      setDbState(prev => {
-        const { [username]: _, ...rest } = prev.users;
-        return { ...prev, users: rest };
-      });
-    }
-  };
 
   const updateSetting = async (id: string, updates: Partial<Setting>) => {
     if (isOffline) return;
@@ -1291,13 +1212,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      db, setDb, currentView, setCurrentView, currentUser, setCurrentUser,
+      db, setDb, currentView, setCurrentView, currentUser, setCurrentUser, currentAvatar, userGuildRoles, setuserGuildRoles, userRole,
       fetchMembers, fetchAllMembers, searchMembers, addMember, updateMember, deleteMember, archiveMember, unarchiveMember, updateMemberCostumeLevel, updateMemberExclusiveWeapon,
       fetchInitialData,
       addGuild, updateGuild, deleteGuild,
       addCharacter, updateCharacter, deleteCharacter, updateCharactersOrder,
       addCostume, updateCostume, deleteCostume, updateCostumesOrder,
-      updateUserPassword, updateUserRole, addUser, deleteUser, updateSetting, fetchSettings,
+      updateSetting, fetchSettings,
       fetchApplyMails, addApplyMail, updateApplyMail, deleteApplyMail,
       updateAccessControl,
       restoreData, toasts, showToast, removeToast,
