@@ -48,7 +48,7 @@ const clearPersistedDraft = () => {
 
 const persistDraft = (state: any) => {
     if (typeof window === 'undefined') return;
-    if (!state.isDraftInitialized) return;
+    if (!state.isDraftInitialized || state.skipPersistUntilModified) return;
 
     const data = {
         localMembers: state.localMembers,
@@ -126,6 +126,7 @@ const initialState = {
     isMultiSelectMode: false,
     initialMemberStates: {} as Record<string, { guildId: string; note?: string; role?: Role; color?: string }>,
     isDraftInitialized: false,
+    skipPersistUntilModified: true,
     notification: {
         isOpen: false,
         title: '',
@@ -142,6 +143,7 @@ const saveHistory = (state: typeof initialState & { archiveModal: typeof initial
     history: [...state.history, { local: state.localMembers, staging: state.stagingMembers, deleted: state.deletedMembers }],
     redoStack: [],
     selectedIds: new Set<string>(),
+    skipPersistUntilModified: false,
 });
 
 const updateMembersBySelection = (
@@ -199,10 +201,42 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
     clearLocalStorage: () => {
         clearPersistedDraft();
         set({
+            isDraftInitialized: false,
             notification: {
                 isOpen: true,
                 title: '已放棄變更',
-                message: '本機暫存已清除，請確認已重新載入原始資料。',
+                message: '本機暫存已清除。',
+                type: 'success',
+            },
+        });
+    },
+
+    discardChanges: (members, guilds) => {
+        clearPersistedDraft();
+
+        const initialStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string }> = {};
+        members.forEach(m => {
+            if (m.id) {
+                initialStates[m.id] = { guildId: m.guildId, note: m.note, role: m.role, color: m.color };
+            }
+        });
+
+        set({
+            localMembers: members,
+            localGuilds: guilds,
+            stagingMembers: [],
+            deletedMembers: [],
+            history: [],
+            redoStack: [],
+            selectedIds: new Set(),
+            isMultiSelectMode: false,
+            initialMemberStates: initialStates,
+            isDraftInitialized: true,
+            skipPersistUntilModified: true,
+            notification: {
+                isOpen: true,
+                title: '已放棄變更',
+                message: '已清除暫存並重置為原始資料',
                 type: 'success',
             },
         });
@@ -286,6 +320,7 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                 isMultiSelectMode: false,
                 initialMemberStates: persisted.initialMemberStates ?? resolvedInitialStates,
                 isDraftInitialized: true,
+                skipPersistUntilModified: true,
             });
             return;
         }
@@ -301,6 +336,7 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
             isMultiSelectMode: false,
             initialMemberStates: resolvedInitialStates,
             isDraftInitialized: true,
+            skipPersistUntilModified: true,
         });
     },
 
@@ -698,18 +734,6 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
 }));
 
 // persist changes to localStorage
-useMemberBoardStore.subscribe(
-    (state) => ({
-        localMembers: state.localMembers,
-        localGuilds: state.localGuilds,
-        stagingMembers: state.stagingMembers,
-        deletedMembers: state.deletedMembers,
-        history: state.history,
-        redoStack: state.redoStack,
-        initialMemberStates: state.initialMemberStates,
-        isDraftInitialized: state.isDraftInitialized,
-    }),
-    (selectedState) => {
-        persistDraft(selectedState);
-    }
-);
+useMemberBoardStore.subscribe((state) => {
+    persistDraft(state);
+});

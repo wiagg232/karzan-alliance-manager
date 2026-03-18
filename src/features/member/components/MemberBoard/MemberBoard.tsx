@@ -36,6 +36,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
         redo,
         history,
         redoStack,
+        discardChanges,
     } = useMemberBoardStore();
 
     useEffect(() => {
@@ -201,8 +202,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
                 <button
                     onClick={() => {
                         if (window.confirm('確認放棄變更並清除本地暫存？')) {
-                            clearLocalStorage();
-                            init(initialMembers, initialGuilds);
+                            discardChanges(initialMembers, initialGuilds);
                         }
                     }}
                     className="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium shadow transition"

@@ -18,6 +18,7 @@ export type MemberBoardState = {
     isMultiSelectMode: boolean;
     initialMemberStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string }>;
     isDraftInitialized: boolean;
+    skipPersistUntilModified: boolean;
     notification: {
         isOpen: boolean;
         title: string;
@@ -58,6 +59,7 @@ export type MemberBoardActions = {
     confirmArchiveAndSave: () => Promise<void>;
     saveToDatabase: () => Promise<void>;
     clearLocalStorage: () => void;
+    discardChanges: (members: Member[], guilds: Guild[]) => void;
 };
 
 export type MemberBoardStore = MemberBoardState & MemberBoardActions;
