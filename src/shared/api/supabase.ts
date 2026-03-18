@@ -11,7 +11,13 @@ if (!supabaseUrl || !supabaseKey) {
 
 // 原始 client（不建議直接在業務程式碼中使用）
 const rawSupabase = (supabaseUrl && supabaseKey)
-    ? createClient(supabaseUrl, supabaseKey)
+    ? createClient(supabaseUrl, supabaseKey, {
+        auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true // 👈 確保這個是 true
+        }
+    })
     : null as any; // Cast to any to avoid type errors if null
 
 // 轉換工具
