@@ -135,7 +135,7 @@ export default function Header() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { db, currentUser, setCurrentUser, userVolume, setUserVolume } = useAppContext();
+  const { db, currentUser, setCurrentUser, userVolume, setUserVolume, isRoleLoading } = useAppContext();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -184,6 +184,14 @@ export default function Header() {
   const canSeeAllGuilds = userRole === 'admin' || userRole === 'creator' || userRole === 'manager';
 
   const canAccessPage = (pageId: string) => {
+    // 🔒 防護 1：只要系統還在載入，為了安全，所有的敏感按鈕一律先藏起來！
+    if (isRoleLoading) return false;
+  
+    // 🔒 防護 2：如果規則表還沒抓回來，也一律當作沒權限 (避免函式預設放行)
+    if (!db.accessControl || Object.keys(db.accessControl).length === 0) {
+       return false; 
+    }
+
     return canUserAccessPage(pageId, userRole || undefined, db.accessControl);
   };
 
