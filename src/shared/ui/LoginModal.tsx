@@ -16,7 +16,7 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
             const { error: authError } = await supabase.auth.signInWithOAuth({
                 provider: 'discord',
                 options: {
-                    redirectTo: `https://mafflereich.github.io/kazran-alliance-system/`,
+                    redirectTo: `${window.location.origin}${window.location.pathname}`,
                     scopes: 'guilds.members.read',
                 },
             });
