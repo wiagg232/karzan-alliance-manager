@@ -153,7 +153,7 @@ export default function ApplicationMailbox() {
     switch (subject) {
       case 'leave': return 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800';
       case 'tier_change': return 'bg-red-100 dark:bg-red-900/10 border-red-200 dark:border-red-800';
-      case 'reserved_seat': return 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800';
+      case 'reserved_seat': return 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800';
       case 'id_change': return 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800';
       default: return 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700';
     }
