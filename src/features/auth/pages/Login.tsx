@@ -12,7 +12,7 @@ const DOMAIN_SUFFIX = '@kazran.com';
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { db, fetchAllMembers, setCurrentView, setCurrentUser, currentUser, isRoleLoading } = useAppContext();
+  const { db, fetchAllMembers, setCurrentView, setCurrentUser, currentUser, isRoleLoading, fetchInitialData } = useAppContext();
   const [selectedGuildForLogin, setSelectedGuildForLogin] = useState<{ id: string, name: string } | null>(null);
   const [guildPassword, setGuildPassword] = useState('');
   const [error, setError] = useState('');
@@ -69,6 +69,7 @@ export default function Login() {
 
       setCurrentUser(username.toLowerCase());
       await fetchAllMembers();
+      if (fetchInitialData) await fetchInitialData();
       navigate(`/guild/${selectedGuildForLogin.id}`);
     } catch (error: any) {
       setError(error.message);
