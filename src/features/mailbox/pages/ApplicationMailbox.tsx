@@ -22,7 +22,7 @@ type ApplicationStatus = 'pending' | 'acknowledged' | 'rejected' | 'discuss' | '
 
 export default function ApplicationMailbox() {
   const { t } = useTranslation(['mailbox', 'translation']);
-  const { currentUser, db, fetchApplyMails, addApplyMail, updateApplyMail, deleteApplyMail, showToast, userRole } = useAppContext();
+  const { db, fetchApplyMails, addApplyMail, updateApplyMail, deleteApplyMail, showToast, userRole } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);

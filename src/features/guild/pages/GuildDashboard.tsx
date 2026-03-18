@@ -13,7 +13,7 @@ import { supabase } from '@/shared/api/supabase';
 export default function GuildDashboard({ guildId }: { guildId: string }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { db, setCurrentView, currentUser, isMembersLoading, userRoles, userRole } = useAppContext();
+  const { db, isMembersLoading, userGuildRoles, userRole } = useAppContext();
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -110,11 +110,11 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
   };
 
   const canSeeAllGuilds = userRole === 'admin' || userRole === 'creator' || userRole === 'manager';
-  const userGuilds = !canSeeAllGuilds && userRoles.length > 0 ? Object.entries(db.guilds).filter(([_, g]) => userRoles.includes(g.username || '') || userRoles.includes(g.name || '')) : [];
+  const userGuilds = !canSeeAllGuilds && userGuildRoles.length > 0 ? Object.entries(db.guilds).filter(([_, g]) => userGuildRoles.includes(g.username || '') || userGuildRoles.includes(g.name || '')) : [];
   const hasAccessToGuild = canSeeAllGuilds || userGuilds.some(([id, _]) => id === guildId);
 
   // Redirect or block if trying to access another guild as a guild user
-  if (currentUser && !hasAccessToGuild) {
+  if (userRole && !hasAccessToGuild) {
     const defaultGuildId = userGuilds.length > 0 ? userGuilds[0][0] : null;
     return (
       <div className="h-screen flex flex-col">
@@ -266,7 +266,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
   const sortedGuilds = React.useMemo(() => {
     const guildsToDisplay = canSeeAllGuilds
       ? Object.entries(db.guilds)
-      : Object.entries(db.guilds).filter(([_, g]) => userRoles.includes(g.username || '') || userRoles.includes(g.name || ''));
+      : Object.entries(db.guilds).filter(([_, g]) => userGuildRoles.includes(g.username || '') || userGuildRoles.includes(g.name || ''));
 
     return (guildsToDisplay as [string, any][])
       .sort((a, b) => {
@@ -277,7 +277,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
         const orderB = b[1].orderNum || 99;
         return orderA - orderB;
       });
-  }, [db.guilds, canSeeAllGuilds, userRoles]);
+  }, [db.guilds, canSeeAllGuilds, userGuildRoles]);
 
   return (
     <div className="h-screen bg-stone-100 dark:bg-stone-900 flex flex-col overflow-hidden">

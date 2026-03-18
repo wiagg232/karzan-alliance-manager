@@ -20,7 +20,7 @@ export default function Header() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { db, currentUser, setCurrentUser, userVolume, setUserVolume, userRole, userRoles } = useAppContext();
+  const { db, currentUser, currentAvatar, setCurrentUser, userVolume, setUserVolume, userRole, userGuildRoles } = useAppContext();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -71,7 +71,7 @@ export default function Header() {
     return canUserAccessPage(pageId, userRole || undefined, db.accessControl);
   };
 
-  const userGuilds = !canSeeAllGuilds && userRoles.length > 0 ? Object.entries(db.guilds).filter(([_, g]) => userRoles.includes(g.username || '') || userRoles.includes(g.name || '')) : [];
+  const userGuilds = !canSeeAllGuilds && userGuildRoles.length > 0 ? Object.entries(db.guilds).filter(([_, g]) => userGuildRoles.includes(g.username || '') || userGuildRoles.includes(g.name || '')) : [];
   const userGuildId = userGuilds.length > 0 ? userGuilds[0][0] : null;
 
   const topGuildId = canSeeAllGuilds ? (sortedGuilds.length > 0 ? sortedGuilds[0][0] : null) : userGuildId;
@@ -216,9 +216,14 @@ export default function Header() {
                     {currentUser ? (
                       <div className="p-4 bg-stone-900 rounded-xl border border-stone-800">
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-stone-950 font-bold">
-                            {currentUser[0].toUpperCase()}
+
+                          <div className={`relative w-16 h-16`}>
+                            <img
+                              src={currentAvatar}
+                              className="w-full h-full object-cover rounded-full ring-2 ring-white/80 dark:ring-gray-800"
+                            />
                           </div>
+
                           <div>
                             <div className="text-sm font-bold text-white truncate max-w-[150px]">{currentUser}</div>
                             <div className="text-[10px] text-stone-500 uppercase tracking-wider">{userRole}</div>

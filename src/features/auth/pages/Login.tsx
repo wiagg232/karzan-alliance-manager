@@ -13,7 +13,7 @@ import { logEvent } from '@/analytics';
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { db, fetchAllMembers, setCurrentView, setCurrentUser, currentUser, isRoleLoading, userRoles, userRole } = useAppContext();
+  const { db, fetchAllMembers, isRoleLoading, userGuildRoles, userRole } = useAppContext();
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -22,12 +22,12 @@ export default function Login() {
 
   useEffect(() => {
     fetchAllMembers();
-  }, [currentUser]);
+  }, [userRole]);
 
-  const handleGuildSelect = async (guildId: string, guildName: string) => {
-    if (currentUser) {
+  const handleGuildSelect = async (guildId: string) => {
+    if (userRole) {
       const guild = db.guilds[guildId];
-      const hasAccess = canSeeAllGuilds || userRoles.includes(guild?.username || '') || userRoles.includes(guild?.name || '');
+      const hasAccess = canSeeAllGuilds || userGuildRoles.includes(guild?.username) || userGuildRoles.includes(guild?.name);
       if (!hasAccess) return;
       navigate(`/guild/${guildId}`);
       return;
@@ -58,7 +58,7 @@ export default function Login() {
 
     if (!newCostume) return stats;
 
-    Object.entries(db.guilds).forEach(([id, guild]) => {
+    Object.entries(db.guilds).forEach(([id]) => {
       const membersInGuild = Object.values(db.members).filter((member) => member.guildId === id && member.status === "active");
 
       if (membersInGuild.length === 0) {
@@ -124,14 +124,14 @@ export default function Login() {
                       <div key={tier} className="space-y-3">
                         <h3 className={`font-bold text-center py-2 rounded-lg border ${getTierColor(tier)}`}>{t('guilds.tier')} {tier}</h3>
                         {tierGuilds.map(([id, guild]: [string, any]) => {
-                          const isDisabled = currentUser && !canSeeAllGuilds && !userRoles.includes(guild.username || '') && !userRoles.includes(guild.name || '');
+                          const isDisabled = userRole && !canSeeAllGuilds && !userGuildRoles.includes(guild.username) && !userGuildRoles.includes(guild.name);
                           const stats = guildStats[id] || { rate: 0, is100: false, count: 0 };
                           const { rate: newCostumeRate, is100 } = stats;
 
                           // Determine classes based on state and tier
                           let buttonClasses = "w-full flex items-center justify-between p-4 bg-white dark:bg-stone-800 border rounded-xl transition-all group overflow-hidden relative disabled:opacity-50";
 
-                          const showPercent = currentUser && indexPercentType === 'new_costumes_owned';
+                          const showPercent = userRole && indexPercentType === 'new_costumes_owned';
 
                           let textClasses = (showPercent && is100) ? getTierTextColor(tier) : `font-medium transition-colors ${getTierTextHoverClass(tier)}`;
                           let iconClasses = `w-5 h-5 transition-colors ${isDisabled ? 'text-stone-300 dark:text-stone-600' : getTierTextHoverClass(tier)}`;
@@ -157,7 +157,7 @@ export default function Login() {
                           return (
                             <button
                               key={id}
-                              onClick={() => handleGuildSelect(id, guild.name)}
+                              onClick={() => handleGuildSelect(id)}
                               disabled={isVerifying || isDisabled}
                               className={`${buttonClasses} group/btn`}
                             >

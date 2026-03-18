@@ -32,8 +32,9 @@ interface AppContextType {
   setCurrentView: React.Dispatch<React.SetStateAction<ViewState>>;
   currentUser: string | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<string | null>>;
-  userRoles: string[];
-  setUserRoles: React.Dispatch<React.SetStateAction<string[]>>;
+  currentAvatar: string | null;
+  userGuildRoles: string[];
+  setuserGuildRoles: React.Dispatch<React.SetStateAction<string[]>>;
   userRole: User['role'] | null;
 
   // Member functions
@@ -124,8 +125,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const [currentAvatar, setCurrentAvatarState] = useState<string | null>(null);
   const [currentUser, setCurrentUserState] = useState<string | null>(null);
-  const [userRoles, setUserRolesState] = useState<string[]>([]);
+  const [userGuildRoles, setuserGuildRolesState] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<User['role'] | null>(null);
 
   const [isRoleLoading, setIsRoleLoading] = useState(false);
@@ -135,13 +137,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUserState(user);
     setUserId(user);
     if (!user) {
-      setUserRolesState([]);
+      setuserGuildRolesState([]);
+      setCurrentAvatarState(null);
       setUserRole(null);
+
     }
   };
 
-  const setUserRoles = (roles: string[]) => {
-    setUserRolesState(roles);
+  const setuserGuildRoles = (roles: string[]) => {
+    setuserGuildRolesState(roles);
+  };
+
+  const loadDiscordRoles = async () => {
+    if (!supabase) return;
+
+    setIsRoleLoading(true);
+
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session?.user) return;
+
+      const user = session.user;
+      if (user.app_metadata?.provider !== 'discord') return;
+
+      const discordId = user.identities?.find((i: any) => i.provider === 'discord')?.id || user.user_metadata?.sub;
+      if (!discordId) return;
+
+      // 已有 profile 時不再呼叫
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, user_role, user_guilds, display_name, avatar_url')
+        .eq('discord_id', discordId)
+        .maybeSingle();
+
+      if (!profileError && existingProfile) {
+        setCurrentAvatarState(existingProfile.avatar_url);
+        setCurrentUserState(existingProfile.display_name);
+        setUserRole(existingProfile.user_role);
+        setuserGuildRolesState(existingProfile.user_guilds ? existingProfile.user_guilds.split(',').map((r: string) => r.trim()) : []);
+        return;
+      }
+
+
+      const discordUsername = user.user_metadata?.full_name || user.user_metadata?.name;
+
+      const { data, error: invokeError } = await supabase.functions.invoke('sync-discord-roles', {
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: {
+          user_id: user.id,
+          discord_id: discordId,
+          username: discordUsername
+        }
+      });
+
+      if (invokeError) {
+        console.error('Edge function returned an error:', invokeError);
+      } else if (data) {
+        const roles = data.guildRoles ? data.guildRoles.split(',').map((r: string) => r.trim()) : [];
+        setCurrentAvatarState(data.avatarUrl);
+        setCurrentUserState(data.displayName);
+        setuserGuildRolesState(roles);
+        if (data.role) setUserRole(data.role);
+      }
+    } catch (error) {
+      console.error('Error invoking edge function:', error);
+    } finally {
+      setIsRoleLoading(false);
+    }
   };
 
   const [loadedStates, setLoadedStates] = useState({
@@ -207,50 +272,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        const discordUsername = session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email?.split('@')[0];
-        setCurrentUserState(discordUsername);
-
-        // Get role from metadata
-        const role = session.user.user_metadata.role || 'member';
-        setUserRole(role);
-
+        // 當 Discord 用戶第一次登入時，觸發 sync-discord-roles（註冊流程）
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          if (session.user.app_metadata.provider === 'discord') {
-            setIsRoleLoading(true);
-            try {
-              const discordId = session.user.identities?.find(i => i.provider === 'discord')?.id || session.user.user_metadata.sub;
-
-              const { data, error } = await supabase.functions.invoke('sync-discord-roles', {
-                headers: {
-                  'Authorization': `Bearer ${supabaseKey}`,
-                  'Content-Type': 'application/json'
-                },
-                body: {
-                  user_id: session.user.id,
-                  discord_id: discordId,
-                  username: discordUsername
-                }
-              });
-
-              if (error) {
-                console.error('Edge function returned an error:', error);
-              } else if (data) {
-                const roles = data.guild_roles ? data.guild_roles.split(',').map((r: string) => r.trim()) : [];
-                setUserRolesState(roles);
-                if (data.role) setUserRole(data.role);
-              }
-            } catch (error) {
-              console.error('Error invoking edge function:', error);
-            } finally {
-              setIsRoleLoading(false);
-            }
-          }
+          loadDiscordRoles();
         }
       } else {
         setCurrentUserState(null);
-        setUserRolesState([]);
+        setuserGuildRolesState([]);
         setUserRole(null);
         setCurrentViewState(null);
+        setCurrentAvatarState(null);
       }
     });
 
@@ -1178,7 +1209,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      db, setDb, currentView, setCurrentView, currentUser, setCurrentUser, userRoles, setUserRoles, userRole,
+      db, setDb, currentView, setCurrentView, currentUser, setCurrentUser, currentAvatar, userGuildRoles, setuserGuildRoles, userRole,
       fetchMembers, fetchAllMembers, searchMembers, addMember, updateMember, deleteMember, archiveMember, unarchiveMember, updateMemberCostumeLevel, updateMemberExclusiveWeapon,
       addGuild, updateGuild, deleteGuild,
       addCharacter, updateCharacter, deleteCharacter, updateCharactersOrder,
