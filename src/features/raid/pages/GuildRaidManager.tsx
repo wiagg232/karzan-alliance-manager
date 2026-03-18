@@ -617,7 +617,6 @@ export default function GuildRaidManager() {
           member_id: m.id!,
           season_guild: m.guildId,
           score: existing?.score ?? 0,
-          note: existing?.note ?? '',
           season_note: existing?.season_note ?? ''
         };
       });
