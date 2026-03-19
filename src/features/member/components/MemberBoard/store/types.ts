@@ -12,8 +12,12 @@ export type MemberBoardState = {
     localGuilds: Guild[];
     stagingMembers: Member[];
     deletedMembers: Member[];
-    history: { local: Member[], staging: Member[], deleted: Member[], selectedIds: Set<string>, isMultiSelectMode: boolean }[];
-    redoStack: { local: Member[], staging: Member[], deleted: Member[], selectedIds: Set<string>, isMultiSelectMode: boolean }[];
+    history: {
+        contextMenu: any; local: Member[], staging: Member[], deleted: Member[], selectedIds: Set<string>, isMultiSelectMode: boolean
+    }[];
+    redoStack: {
+        contextMenu: any; local: Member[], staging: Member[], deleted: Member[], selectedIds: Set<string>, isMultiSelectMode: boolean
+    }[];
     selectedIds: Set<string>;
     isMultiSelectMode: boolean;
     contextMenu: {

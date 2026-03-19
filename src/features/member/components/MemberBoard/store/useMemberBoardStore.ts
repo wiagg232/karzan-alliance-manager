@@ -6,6 +6,22 @@ import type { MemberBoardStore } from './types';
 
 const MEMBER_BOARD_STORAGE_KEY = 'memberBoardDraft';
 
+type MemberMoveAction = 'move' | 'kick';
+
+type MemberMovePayloadItem = {
+    id?: string;
+    name: string;
+    sourceGuild?: string;
+    targetGuild?: string;
+    action: MemberMoveAction;
+};
+
+type MemberMovePayload = {
+    guildName: string;
+    members: MemberMovePayloadItem[];
+    archiveReason?: string;
+};
+
 const buildGuildGroups = (members: Member[], guilds: Guild[], getGuildId: (m: Member) => string): Record<string, string[]> => {
     const groups: Record<string, string[]> = {};
     members.forEach(m => {
@@ -73,7 +89,7 @@ const persistDraft = (state: any) => {
 
 const sendApiAndNotify = (
     set: (partial: any) => void,
-    apiPayload: { guildName: string; members: string[]; archiveReason?: string }[],
+    apiPayload: MemberMovePayload[],
     memberCount: number,
     onSuccess?: () => void
 ) => {
@@ -83,9 +99,17 @@ const sendApiAndNotify = (
         return;
     }
 
-    const localMessage = apiPayload.map(g =>
-        `${g.guildName}\n${g.members.join(' ')}\n請 {會長} {副會長} 今天送出他們`
-    ).join('\n\n');
+    const localMessage = apiPayload.map(group => {
+        const membersText = group.members.map(member => {
+            if (member.action === 'kick') {
+                return `${member.name} (踢出)`;
+            }
+            const targetName = member.targetGuild || member.sourceGuild || '未知公會';
+            return `${member.name} (${targetName})`;
+        }).join(' ');
+
+        return `# ${group.guildName}\n${membersText}\n請 {會長} {副會長} 今天送出他們`;
+    }).join('\n\n');
 
     fetch('https://chaosop.duckdns.org/api/memberMoveMessage', {
         method: 'POST',
@@ -129,8 +153,8 @@ const initialState = {
     localGuilds: [] as Guild[],
     stagingMembers: [] as Member[],
     deletedMembers: [] as Member[],
-    history: [] as { local: Member[], staging: Member[], deleted: Member[] }[],
-    redoStack: [] as { local: Member[], staging: Member[], deleted: Member[] }[],
+    history: [] as { contextMenu: any; local: Member[]; staging: Member[]; deleted: Member[]; selectedIds: Set<string>; isMultiSelectMode: boolean }[],
+    redoStack: [] as { contextMenu: any; local: Member[]; staging: Member[]; deleted: Member[]; selectedIds: Set<string>; isMultiSelectMode: boolean }[],
     selectedIds: new Set<string>(),
     isMultiSelectMode: false,
     contextMenu: {
@@ -257,20 +281,42 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
             ]);
         }
 
-        const movedGroups = buildGuildGroups(
-            localMembers.filter(m => m.id && initialMemberStates[m.id!]?.guildId !== m.guildId),
-            localGuilds,
-            m => initialMemberStates[m.id!]?.guildId || m.guildId
-        );
+        const changedMembers = localMembers
+            .filter(m => m.id && initialMemberStates[m.id!]?.guildId !== m.guildId)
+            .map(m => {
+                const sourceGuildName = localGuilds.find(g => g.id === initialMemberStates[m.id!]?.guildId)?.name || '未知公會';
+                const targetGuildName = localGuilds.find(g => g.id === m.guildId)?.name || '未知公會';
+                return {
+                    id: m.id,
+                    name: m.name,
+                    sourceGuild: sourceGuildName,
+                    targetGuild: targetGuildName,
+                    action: 'move' as const
+                };
+            });
 
-        const archivedGroups = buildGuildGroups(
-            membersToArchive,
-            localGuilds,
-            m => initialMemberStates[m.id!]?.guildId || m.guildId
-        );
+        const archivedMemberItems = membersToArchive.map(m => {
+            const sourceGuildName = localGuilds.find(g => g.id === initialMemberStates[m.id!]?.guildId)?.name || '未知公會';
+            return {
+                id: m.id,
+                name: m.name,
+                sourceGuild: sourceGuildName,
+                action: 'kick' as const
+            };
+        });
 
+        const groupItemsBySource = (items: MemberMovePayloadItem[]) =>
+            items.reduce((acc, item) => {
+                const key = item.sourceGuild || '未知公會';
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(item);
+                return acc;
+            }, {} as Record<string, MemberMovePayloadItem[]>);
 
-        const apiPayload = [
+        const movedGroups = groupItemsBySource(changedMembers);
+        const archivedGroups = groupItemsBySource(archivedMemberItems);
+
+        const apiPayload: MemberMovePayload[] = [
             ...Object.entries(movedGroups).map(([guildName, members]) => ({ guildName, members })),
             ...Object.entries(archivedGroups).map(([guildName, members]) => ({ guildName, members }))
         ];
@@ -676,7 +722,7 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                     .select('member_id, uid')
                     .in('member_id', memberIds);
 
-                const existingMap = new Map(existingNotes?.map(n => [n.member_id, n.uid]) || []);
+                const existingMap = new Map<string, string>(existingNotes?.map(n => [n.member_id, n.uid]) || []);
 
                 const notesToSave = membersWithChangedNotes.map(m => ({
                     member_id: m.id,
@@ -723,19 +769,43 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                 return;
             }
 
-            const movedGroups = buildGuildGroups(
-                localMembers.filter(m => m.id && initialMemberStates[m.id!]?.guildId !== m.guildId),
-                localGuilds,
-                m => initialMemberStates[m.id!]?.guildId || m.guildId
-            );
+            const movedItems = localMembers
+                .filter(m => m.id && initialMemberStates[m.id!]?.guildId !== m.guildId)
+                .map(m => {
+                    const sourceGuildName = localGuilds.find(g => g.id === initialMemberStates[m.id!]?.guildId)?.name || '未知公會';
+                    const targetGuildName = localGuilds.find(g => g.id === m.guildId)?.name || '未知公會';
+                    return {
+                        id: m.id,
+                        name: m.name,
+                        sourceGuild: sourceGuildName,
+                        targetGuild: targetGuildName,
+                        action: 'move' as const
+                    };
+                });
+            const archivedMemberItems = deletedMembers
+                .filter(m => m.id && initialMemberStates[m.id!])
+                .map(m => {
+                    const sourceGuildName = localGuilds.find(g => g.id === initialMemberStates[m.id!]?.guildId)?.name || '未知公會';
+                    return {
+                        id: m.id,
+                        name: m.name,
+                        sourceGuild: sourceGuildName,
+                        action: 'kick' as const
+                    };
+                });
 
-            const archivedGroups = buildGuildGroups(
-                deletedMembers.filter(m => m.id && initialMemberStates[m.id!]),
-                localGuilds,
-                m => initialMemberStates[m.id!]?.guildId || m.guildId
-            );
+            const groupItemsBySource = (items: MemberMovePayloadItem[]) =>
+                items.reduce((acc, item) => {
+                    const key = item.sourceGuild || '未知公會';
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(item);
+                    return acc;
+                }, {} as Record<string, MemberMovePayloadItem[]>);
 
-            const apiPayload: { guildName: string; members: string[]; archiveReason?: string }[] = [
+            const movedGroups = groupItemsBySource(movedItems);
+            const archivedGroups = groupItemsBySource(archivedMemberItems);
+
+            const apiPayload: MemberMovePayload[] = [
                 ...Object.entries(movedGroups).map(([guildName, members]) => ({ guildName, members })),
                 ...Object.entries(archivedGroups).map(([guildName, members]) => ({ guildName, members }))
             ];
