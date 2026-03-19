@@ -320,7 +320,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
+      const token = session?.access_token;
+
+      if (session?.user && token && token.split('.').length === 3) {
         // 當 Discord 用戶第一次登入時，觸發 sync-discord-roles（註冊流程）
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           loadDiscordRoles();
