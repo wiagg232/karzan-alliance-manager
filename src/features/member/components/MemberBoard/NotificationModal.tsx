@@ -8,7 +8,7 @@ export default function NotificationModal() {
 
     if (!notification.isOpen) return null;
 
-    const { title, message, type, copyContent } = notification;
+    const { title, message, type, copyContent, confirmLabel, onConfirm } = notification;
 
     const handleCopy = () => {
         if (copyContent) {
@@ -73,6 +73,17 @@ export default function NotificationModal() {
                         >
                             {copied ? <CheckCircle size={16} className="text-emerald-400" /> : <Copy size={16} />}
                             {copied ? '已複製' : '複製訊息'}
+                        </button>
+                    )}
+                    {confirmLabel && onConfirm && (
+                        <button
+                            onClick={() => {
+                                onConfirm();
+                                closeNotification();
+                            }}
+                            className="px-5 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                            {confirmLabel}
                         </button>
                     )}
                     <button

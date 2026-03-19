@@ -279,7 +279,7 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
 
     closeNotification: () => set((state) => ({ notification: { ...state.notification, isOpen: false } })),
 
-    showNotification: (title, message, type = 'info', copyContent) => {
+    showNotification: (title, message, type = 'info', copyContent, confirmLabel, onConfirm) => {
         if (typeof window !== 'undefined' && copyContent) {
             navigator.clipboard.writeText(copyContent).catch(() => { });
         }
@@ -289,7 +289,9 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                 title,
                 message,
                 type,
-                copyContent
+                copyContent,
+                confirmLabel,
+                onConfirm,
             }
         });
     },
@@ -674,7 +676,7 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
         });
     },
 
-    saveToDatabase: async () => {
+        saveToDatabase: async () => {
         const state = get();
         const { localMembers, localGuilds, stagingMembers, deletedMembers, initialMemberStates } = state;
 
@@ -804,6 +806,11 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                 },
             });
         }
+    },
+
+    discardDraft: () => {
+        clearPersistedDraft();
+        window.location.reload();
     },
 }));
 

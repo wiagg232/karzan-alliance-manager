@@ -39,6 +39,7 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
         redoStack,
         buildApiPayload,
         showNotification,
+        discardDraft,
     } = useMemberBoardStore();
 
     useEffect(() => {
@@ -85,6 +86,17 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
         } finally {
             setIsPreviewing(false);
         }
+    };
+
+    const handleDiscardDraft = () => {
+        showNotification(
+            '確認捨棄草稿',
+            '確定要捨棄所有未上傳的變更並清除草稿嗎？\n\n此操作將重新載入頁面，所有未儲存的變更將會消失。',
+            'error',
+            undefined,
+            '確認捨棄',
+            () => discardDraft()
+        );
     };
 
     const tieredData: TieredData[] = useMemo(() => buildTieredData(localMembers, initialGuilds), [localMembers, initialGuilds]);
@@ -243,6 +255,12 @@ export default function MemberBoard({ initialMembers, initialGuilds, onSave }: P
                     className="px-5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium shadow transition"
                 >
                     上傳變更
+                </button>
+                <button
+                    onClick={handleDiscardDraft}
+                    className="px-5 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded-lg text-sm font-medium shadow transition"
+                >
+                    捨棄草稿
                 </button>
                 <button
                     onClick={handlePreview}

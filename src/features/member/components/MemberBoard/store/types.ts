@@ -52,6 +52,8 @@ export type MemberBoardState = {
         message: string;
         type: 'success' | 'error' | 'info';
         copyContent?: string;
+        confirmLabel?: string;
+        onConfirm?: () => void;
     };
     archiveModal: {
         isOpen: boolean;
@@ -83,12 +85,13 @@ export type MemberBoardActions = {
     pasteMembers: (pasted: Member[]) => void;
     buildApiPayload: () => MemberMovePayload[];
     closeNotification: () => void;
-    showNotification: (title: string, message: string, type?: 'success' | 'error' | 'info', copyContent?: string) => void;
+    showNotification: (title: string, message: string, type?: 'success' | 'error' | 'info', copyContent?: string, confirmLabel?: string, onConfirm?: () => void) => void;
     openArchiveModal: (members: ArchiveMember[]) => void;
     closeArchiveModal: () => void;
     updateArchiveMemberReason: (id: string, reason: string) => void;
     confirmArchiveAndSave: () => Promise<void>;
     saveToDatabase: () => Promise<void>;
+    discardDraft: () => void;
 };
 
 export type MemberBoardStore = MemberBoardState & MemberBoardActions;
