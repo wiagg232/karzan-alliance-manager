@@ -1,5 +1,6 @@
 {
   "common": {
+    "or": "Or",
     "save": "Save",
     "cancel": "Cancel",
     "confirm": "Confirm",
@@ -225,6 +226,7 @@
     "update_now": "Update now (Reload page)"
   },
   "header": {
+    "admin_email": "Admin Email",
     "application_mailbox": "Application Mailbox",
     "admin_login": "Admin Login",
     "account": "Account",

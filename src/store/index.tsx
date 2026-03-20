@@ -169,7 +169,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error || !session?.user) return;
 
       const user = session.user;
-      if (user.app_metadata?.provider !== 'discord') return;
+      
+      if (user.app_metadata?.provider !== 'discord') {
+        // Handle email/password admin login
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, user_role, user_guilds, display_name, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        console.log('Admin Login Debug:', { userId: user.id, existingProfile, profileError });
+
+        if (!profileError && existingProfile) {
+          setCurrentAvatarState(existingProfile.avatar_url);
+          setCurrentUser(existingProfile.display_name || user.email || 'Admin');
+          setUserRole(existingProfile.user_role || 'admin');
+          setuserGuildRolesState(existingProfile.user_guilds ? existingProfile.user_guilds.split(',').map((r: string) => r.trim()) : []);
+        } else {
+          // Fallback if no profile exists for the email user
+          setCurrentUser(user.email || 'User');
+          setUserRole('member');
+        }
+        return;
+      }
 
       const discordId = user.identities?.find((i: any) => i.provider === 'discord')?.id || user.user_metadata?.sub;
       if (!discordId) return;
