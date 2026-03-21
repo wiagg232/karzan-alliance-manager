@@ -347,6 +347,11 @@
     "save_success": "Settings saved",
     "save_failed": "Failed to save settings"
   },
+  "auth": {
+    "binding_error_title": "Identity Binding Issue",
+    "binding_error_desc": "Don't worry. Please contact administrator to follow-up.",
+    "logout": "Logout"
+  },
   "footer": {
     "copyright": "© 2026 Browndust2 - Kazran Alliance System by 爽世 & ChaosOp. All rights reserved.",
     "disclaimer": "This website is not affiliated with or endorsed by Browndust2. All trademarks and copyrights of the game and its characters are owned by their respective owners.",

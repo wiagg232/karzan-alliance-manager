@@ -347,6 +347,11 @@
     "save_success": "設定已儲存",
     "save_failed": "設定儲存失敗"
   },
+  "auth": {
+    "binding_error_title": "身份綁定出現問題",
+    "binding_error_desc": "不用擔心，棕二玩家都應該習慣遇到BUG。請聯絡管理員跟進。",
+    "logout": "登出帳號"
+  },
   "footer": {
     "copyright": "© 2026 Browndust2 - Kazran Alliance System by 爽世 & ChaosOp. All rights reserved.",
     "disclaimer": "本網站與 Browndust2 無關，亦未獲得其認可。遊戲及其角色的所有商標和版權均歸其各自所有者所有。",
