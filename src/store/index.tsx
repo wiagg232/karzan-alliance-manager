@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Database, Guild, Member, Costume, Role, User, Character, ArchivedMember, ArchiveHistory, Toast, ToastType, Setting, ApplyMail, AccessControl } from '@/entities/member/types';
 import { supabase, supabaseInsert, supabaseKey, supabaseUpdate, supabaseUpsert, toCamel } from '@/shared/api/supabase';
 import { v4 as uuidv4 } from 'uuid';
@@ -132,6 +132,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [currentAvatar, setCurrentAvatarState] = useState<string | null>(null);
   const [currentUser, setCurrentUserState] = useState<string | null>(null);
+  const currentUserRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
   const [userGuildRoles, setuserGuildRolesState] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<User['role'] | null>(null);
 
@@ -154,7 +159,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loadDiscordRoles = async () => {
-    if (currentUser) return;
+    if (currentUserRef.current) return;
     if (!supabase) return;
 
     setIsRoleLoading(true);
@@ -164,12 +169,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error || !session?.user) return;
 
       const user = session.user;
-      if (user.app_metadata?.provider !== 'discord') return;
+      
+      if (user.app_metadata?.provider !== 'discord') {
+        // Handle email/password admin login
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, user_role, user_guilds, display_name, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        console.log('Admin Login Debug:', { userId: user.id, existingProfile, profileError });
+
+        if (!profileError && existingProfile) {
+          setCurrentAvatarState(existingProfile.avatar_url);
+          setCurrentUser(existingProfile.display_name || user.email || 'Admin');
+          setUserRole(existingProfile.user_role || 'admin');
+          setuserGuildRolesState(existingProfile.user_guilds ? existingProfile.user_guilds.split(',').map((r: string) => r.trim()) : []);
+        } else {
+          // Fallback if no profile exists for the email user
+          setCurrentUser(user.email || 'User');
+          setUserRole('member');
+        }
+        return;
+      }
 
       const discordId = user.identities?.find((i: any) => i.provider === 'discord')?.id || user.user_metadata?.sub;
       if (!discordId) return;
 
-      // 已有 profile 時不再呼叫
+      const discordUsername = user.user_metadata?.full_name || user.user_metadata?.name;
+
+      try {
+        const { data, error: invokeError } = await supabase.functions.invoke('sync-discord-roles', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: {
+            user_id: user.id,
+            discord_id: discordId,
+            username: discordUsername
+          }
+        });
+
+        if (invokeError) {
+          console.error('Edge function returned an error:', invokeError);
+        } else {
+          console.log('Edge function synced successfully:', data);
+        }
+      } catch (error) {
+        console.error('Error invoking edge function:', error);
+      }
+
+      // Always fetch from the database to get the latest profile, whether edge function succeeded or failed
       const { data: existingProfile, error: profileError } = await supabase
         .from('profiles')
         .select('id, user_role, user_guilds, display_name, avatar_url')
@@ -178,38 +229,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!profileError && existingProfile) {
         setCurrentAvatarState(existingProfile.avatar_url);
-        setCurrentUserState(existingProfile.display_name);
-        setUserRole(existingProfile.user_role);
+        setCurrentUser(existingProfile.display_name || discordUsername || 'User');
+        setUserRole(existingProfile.user_role || 'member');
         setuserGuildRolesState(existingProfile.user_guilds ? existingProfile.user_guilds.split(',').map((r: string) => r.trim()) : []);
-        return;
-      }
-
-
-      const discordUsername = user.user_metadata?.full_name || user.user_metadata?.name;
-
-      const { data, error: invokeError } = await supabase.functions.invoke('sync-discord-roles', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: {
-          user_id: user.id,
-          discord_id: discordId,
-          username: discordUsername
-        }
-      });
-
-      if (invokeError) {
-        console.error('Edge function returned an error:', invokeError);
-      } else if (data) {
-        const roles = data.guildRoles ? data.guildRoles.split(',').map((r: string) => r.trim()) : [];
-        setCurrentAvatarState(data.avatarUrl);
-        setCurrentUserState(data.displayName);
-        setuserGuildRolesState(roles);
-        if (data.role) setUserRole(data.role);
+      } else {
+        // Fallback if profile doesn't exist yet
+        setCurrentUser(discordUsername || 'User');
+        setUserRole('member');
       }
     } catch (error) {
-      console.error('Error invoking edge function:', error);
+      console.error('Error in loadDiscordRoles:', error);
     } finally {
       setIsRoleLoading(false);
     }
@@ -308,7 +337,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentUser(null);
             setCurrentView(null);
           }
-        } else if (!session && currentUser) {
+        } else if (!session && currentUserRef.current) {
           // No session but we have a local user, clear it to stay in sync
           setCurrentUser(null);
           setCurrentView(null);
@@ -329,11 +358,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           loadDiscordRoles();
         }
       } else {
-        setCurrentUserState(null);
-        setuserGuildRolesState([]);
-        setUserRole(null);
-        setCurrentViewState(null);
-        setCurrentAvatarState(null);
+        setCurrentUser(null);
+        setCurrentView(null);
       }
     });
 

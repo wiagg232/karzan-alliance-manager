@@ -25,9 +25,11 @@ export const canUserAccessPage = (
   
   const hasAccess = roles.includes(userRole as any);
   
+  /* Debug用
   if (!hasAccess) {
     console.warn(`Access denied for page ${pageId}. User role: ${userRole}. Allowed roles:`, roles);
   }
+  */
   
   return hasAccess;
 };
