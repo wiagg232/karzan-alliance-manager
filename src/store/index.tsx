@@ -96,12 +96,14 @@ interface AppContextType {
   userVolume: number | null;
   setUserVolume: (volume: number) => void;
 
+  handleLogout: () => Promise<void>;
+
   isLoaded: boolean;
   isRoleLoading: boolean;
   isMembersLoading: boolean;
 }
 
-import { setUserId } from '@/analytics';
+import { setUserId, logEvent } from '@/analytics';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -142,6 +144,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isRoleLoading, setIsRoleLoading] = useState(false);
   const [isMembersLoading, setIsMembersLoading] = useState(false);
+
+  const handleLogout = async () => {
+    logEvent('User', 'Logout', currentUser || 'unknown');
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    window.location.href = window.location.origin + window.location.pathname;
+  };
 
   const setCurrentUser = (user: string | null) => {
     setCurrentUserState(user);
@@ -1279,7 +1288,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetchApplyMails, addApplyMail, updateApplyMail, deleteApplyMail,
       updateAccessControl,
       restoreData, toasts, showToast, removeToast,
-      userVolume, setUserVolume, isLoaded, isRoleLoading, isMembersLoading
+      userVolume, setUserVolume, handleLogout, isLoaded, isRoleLoading, isMembersLoading
     }}>
       {children}
     </AppContext.Provider>

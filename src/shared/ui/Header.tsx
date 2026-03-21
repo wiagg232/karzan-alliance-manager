@@ -21,7 +21,7 @@ export default function Header() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { db, currentUser, currentAvatar, setCurrentUser, userVolume, setUserVolume, userRole, userGuildRoles, isRoleLoading } = useAppContext();
+  const { db, currentUser, currentAvatar, setCurrentUser, userVolume, setUserVolume, userRole, userGuildRoles, isRoleLoading, handleLogout } = useAppContext();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -49,13 +49,6 @@ export default function Header() {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
-
-  const handleLogout = async () => {
-    logEvent('User', 'Logout', currentUser || 'unknown');
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    navigate('/');
-  };
 
   const sortedGuilds = (Object.entries(db.guilds) as [string, any][]).sort((a, b) => {
     const tierA = a[1].tier || 99;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '@/shared/api/supabase';
+import { useAppContext } from '@/store';
 
 interface BindingErrorModalProps {
   isOpen: boolean;
@@ -9,13 +9,9 @@ interface BindingErrorModalProps {
 
 export const BindingErrorModal: React.FC<BindingErrorModalProps> = ({ isOpen }) => {
   const { t } = useTranslation();
+  const { handleLogout } = useAppContext();
 
   if (!isOpen) return null;
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = window.location.origin + window.location.pathname;
-  };
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-stone-900/80 backdrop-blur-sm p-4 pointer-events-auto">

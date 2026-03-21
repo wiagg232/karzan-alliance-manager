@@ -268,6 +268,8 @@
     "bind_failed": "綁定失敗: {{error}}",
     "already_bound": "此成員已綁定其他 Discord 帳號",
     "guild": "公會",
-    "fetch_failed": "無法取得未匹配資料"
+    "fetch_failed": "無法取得未匹配資料",
+    "select_profile_first": "請先從左側選擇一個未匹配的使用者",
+    "start_search_hint": "輸入成員名稱開始搜尋"
   }
 }

@@ -170,7 +170,7 @@ export default function BindingManager() {
           {!selectedProfile ? (
             <div className="bg-stone-50 dark:bg-stone-900/50 rounded-xl p-12 text-center border border-dashed border-stone-200 dark:border-stone-800">
               <UserIcon className="w-12 h-12 text-stone-300 dark:text-stone-700 mx-auto mb-3" />
-              <p className="text-stone-500 dark:text-stone-400">請先從左側選擇一個未匹配的使用者</p>
+              <p className="text-stone-500 dark:text-stone-400">{t('binding.select_profile_first')}</p>
             </div>
           ) : (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -190,7 +190,7 @@ export default function BindingManager() {
                 {searchQuery.trim() === '' ? (
                   <div className="text-center py-12 text-stone-400">
                     <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                    <p className="text-sm">輸入成員名稱開始搜尋</p>
+                    <p className="text-sm">{t('binding.start_search_hint')}</p>
                   </div>
                 ) : searchResults.length === 0 ? (
                   <div className="text-center py-12 text-stone-400">

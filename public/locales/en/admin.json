@@ -268,6 +268,8 @@
     "bind_failed": "Binding failed: {{error}}",
     "already_bound": "This member is already bound to another Discord account",
     "guild": "Guild",
-    "fetch_failed": "Failed to fetch unmatched profiles"
+    "fetch_failed": "Failed to fetch unmatched profiles",
+    "select_profile_first": "Please select an unmatched user from the left first",
+    "start_search_hint": "Enter member name to start searching"
   }
 }
