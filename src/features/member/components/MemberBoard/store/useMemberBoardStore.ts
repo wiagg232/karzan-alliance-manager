@@ -370,16 +370,67 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
         const persisted = getPersistedDraft();
 
         if (persisted) {
+            const draftMemberMap = new Map<string, Member>(persisted.localMembers.map(m => [m.id!, m]));
+            const mergedLocalMembers = members.map(m => {
+                const draft = draftMemberMap.get(m.id!);
+                if (draft) {
+                    return {
+                        ...m,
+                        guildId: draft.guildId,
+                        role: draft.role ?? m.role,
+                        color: draft.color ?? m.color,
+                    };
+                }
+                return m;
+            });
+
+            const draftStagingMap = new Map<string, Member>(persisted.stagingMembers.map(m => [m.id!, m]));
+            const mergedStagingMembers = members
+                .filter(m => persisted.stagingMembers.some(s => s.id === m.id))
+                .map(m => {
+                    const draft = draftStagingMap.get(m.id!);
+                    return {
+                        ...m,
+                        guildId: draft?.guildId ?? m.guildId,
+                        role: draft?.role ?? m.role,
+                        color: draft?.color ?? m.color,
+                    };
+                });
+
+            const draftDeletedMap = new Map<string, Member>(persisted.deletedMembers.map(m => [m.id!, m]));
+            const mergedDeletedMembers = members
+                .filter(m => persisted.deletedMembers.some(d => d.id === m.id))
+                .map(m => {
+                    const draft = draftDeletedMap.get(m.id!);
+                    return {
+                        ...m,
+                        guildId: draft?.guildId ?? m.guildId,
+                        role: draft?.role ?? m.role,
+                        color: draft?.color ?? m.color,
+                    };
+                });
+
+            const mergedInitialStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string }> = {};
+            Object.entries<{ guildId: string; note?: string; role?: Role; color?: string }>(persisted.initialMemberStates).forEach(([id, state]) => {
+                const dbMember = members.find(m => m.id === id);
+                mergedInitialStates[id] = {
+                    guildId: state.guildId,
+                    note: dbMember?.note ?? state.note,
+                    role: dbMember?.role ?? state.role,
+                    color: dbMember?.color ?? state.color,
+                };
+            });
+
             set({
-                localMembers: persisted.localMembers ?? members,
+                localMembers: mergedLocalMembers,
                 localGuilds: persisted.localGuilds ?? guilds,
-                stagingMembers: persisted.stagingMembers ?? [],
-                deletedMembers: persisted.deletedMembers ?? [],
+                stagingMembers: mergedStagingMembers,
+                deletedMembers: mergedDeletedMembers,
                 history: persisted.history ?? [],
                 redoStack: persisted.redoStack ?? [],
                 selectedIds: new Set(),
                 isMultiSelectMode: false,
-                initialMemberStates: persisted.initialMemberStates ?? resolvedInitialStates,
+                initialMemberStates: mergedInitialStates,
                 isDraftInitialized: true,
                 skipPersistUntilModified: true,
             });
