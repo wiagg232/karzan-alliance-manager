@@ -14,7 +14,7 @@ export const BindingErrorModal: React.FC<BindingErrorModalProps> = ({ isOpen }) 
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/';
+    window.location.href = window.location.origin + window.location.pathname;
   };
 
   return (
