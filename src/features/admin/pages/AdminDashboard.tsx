@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '@/store';
-import { Shield, Sword, Wand2, Key, Archive, Settings, AlertCircle, Lock } from 'lucide-react';
+import { Shield, Sword, Wand2, Key, Archive, Settings, AlertCircle, Lock, Link as LinkIcon } from 'lucide-react';
 import { TabButton } from '../components/TabButton';
 import SinglePasswordUpdate from '../components/SinglePasswordUpdate';
 import BulkPasswordUpdate from '../components/BulkPasswordUpdate';
@@ -10,15 +10,16 @@ import GuildsManager from '../components/GuildsManager';
 import CostumesManager from '../components/CostumesManager';
 import ToolsManager from '../components/ToolsManager';
 import SettingsManager from '../components/SettingsManager';
+import BindingManager from '../components/BindingManager';
 import { useTranslation } from 'react-i18next';
 import { logEvent } from '@/analytics';
 
 export default function AdminDashboard() {
   const { t } = useTranslation(['admin', 'translation']);
   const { db, userRole } = useAppContext();
-  const [activeTab, setActiveTab] = useState<'guilds' | 'costumes' | 'tools' | 'passwords' | 'archived' | 'settings' | 'access'>('guilds');
+  const [activeTab, setActiveTab] = useState<'guilds' | 'costumes' | 'tools' | 'passwords' | 'archived' | 'settings' | 'access' | 'binding'>('guilds');
 
-  const handleTabChange = (tab: 'guilds' | 'costumes' | 'tools' | 'passwords' | 'archived' | 'settings' | 'access') => {
+  const handleTabChange = (tab: 'guilds' | 'costumes' | 'tools' | 'passwords' | 'archived' | 'settings' | 'access' | 'binding') => {
     logEvent('AdminDashboard', 'Switch Tab', tab);
     setActiveTab(tab);
   };
@@ -35,6 +36,9 @@ export default function AdminDashboard() {
         <div className="flex gap-4 mb-6 border-b border-stone-300 dark:border-stone-700 pb-2 overflow-x-auto">
           <TabButton active={activeTab === 'guilds'} onClick={() => handleTabChange('guilds')} icon={<Shield />} label={t('nav.guild_management')} />
           <TabButton active={activeTab === 'costumes'} onClick={() => handleTabChange('costumes')} icon={<Sword />} label={t('nav.costume_database')} />
+          {userRole !== 'manager' && (
+            <TabButton active={activeTab === 'binding'} onClick={() => handleTabChange('binding')} icon={<LinkIcon className="w-4 h-4" />} label={t('nav.identity_binding')} />
+          )}
           <TabButton active={activeTab === 'archived'} onClick={() => handleTabChange('archived')} icon={<Archive />} label={t('nav.archived_members')} />
           {userRole !== 'manager' && (
             <>
@@ -49,6 +53,7 @@ export default function AdminDashboard() {
         <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 p-6">
           {activeTab === 'guilds' && <GuildsManager />}
           {activeTab === 'costumes' && <CostumesManager />}
+          {activeTab === 'binding' && userRole !== 'manager' && <BindingManager />}
           {activeTab === 'archived' && <ArchivedMembersManager />}
           {activeTab === 'passwords' && userRole !== 'manager' && (
             <div className="space-y-12">

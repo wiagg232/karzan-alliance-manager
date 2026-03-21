@@ -284,6 +284,7 @@
     "tools": "便利小功能",
     "access_control": "存取控制",
     "settings": "網頁設定",
+    "identity_binding": "身份手動匹配",
     "costume_db": "服裝資料庫"
   },
   "dashboard": {

@@ -254,5 +254,20 @@
   "access": {
     "page": "Page",
     "notice": "Selected roles will be able to see the link in the header and access the page."
+  },
+  "binding": {
+    "title": "Manual Identity Binding",
+    "unmatched_profiles": "Unmatched Users",
+    "search_members": "Search Members",
+    "search_placeholder": "Enter member name to search...",
+    "no_unmatched": "No unmatched users found",
+    "no_results": "No matching members found",
+    "bind": "Bind Identity",
+    "confirm_bind": "Are you sure you want to bind this Discord account to member {{name}}?",
+    "bind_success": "Identity bound successfully!",
+    "bind_failed": "Binding failed: {{error}}",
+    "already_bound": "This member is already bound to another Discord account",
+    "guild": "Guild",
+    "fetch_failed": "Failed to fetch unmatched profiles"
   }
 }

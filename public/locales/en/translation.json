@@ -284,6 +284,7 @@
     "tools": "Tools",
     "access_control": "Access Control",
     "settings": "Settings",
+    "identity_binding": "Identity Binding",
     "costume_db": "Costume Database"
   },
   "dashboard": {
