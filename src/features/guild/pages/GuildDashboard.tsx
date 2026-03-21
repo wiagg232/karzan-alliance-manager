@@ -13,7 +13,7 @@ import { supabase } from '@/shared/api/supabase';
 export default function GuildDashboard({ guildId }: { guildId: string }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { db, isMembersLoading, userGuildRoles, userRole } = useAppContext();
+  const { db, isMembersLoading, userGuildRoles, userRole, fetchMembers } = useAppContext();
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -23,6 +23,7 @@ export default function GuildDashboard({ guildId }: { guildId: string }) {
 
   useEffect(() => {
     setSortConfig({ key: 'member', order: 'asc' });
+    fetchMembers(guildId);
   }, [guildId]);
 
   useEffect(() => {

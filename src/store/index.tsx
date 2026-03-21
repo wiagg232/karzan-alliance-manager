@@ -383,7 +383,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
   // Function to fetch members for a specific guild
-  const fetchMembers = async (guildId: string, columns: string = 'id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reserved), member_raid_records(score, season_note)') => {
+  const fetchMembers = async (guildId: string, columns: string = 'id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, archive_remark, member_notes(note, is_reserved), member_raid_records(id, season_id, score, season_note)') => {
     if (isOffline) return;
 
     // Check if we already have members for this guild
@@ -393,6 +393,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!hasCachedMembers) {
       setIsMembersLoading(true);
     }
+
+    // First, get the max ID from raid_seasons
+    const { data: seasonData, error: seasonError } = await supabase
+      .from('raid_seasons')
+      .select('id')
+      .order('id', { ascending: false })
+      .limit(1);
+
+    if (seasonError) {
+      console.error("Error fetching raid seasons:", seasonError);
+    }
+
+    const maxSeasonId = seasonData?.[0]?.id || null;
 
     const selectQuery = columns;
 
@@ -412,7 +425,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newMembers = data.reduce((acc, member) => {
       const camelMember = toCamel<any>(member);
       const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
-      const memberRaidRecords = Array.isArray(camelMember.memberRaidRecords) ? camelMember.memberRaidRecords[0] : camelMember.memberRaidRecords;
+      
+      // Filter member_raid_records to only include records for the max season ID
+      const allRaidRecords = Array.isArray(camelMember.memberRaidRecords) ? camelMember.memberRaidRecords : [];
+      const filteredRaidRecords = maxSeasonId
+        ? allRaidRecords.filter((r: any) => r.season_id === maxSeasonId)
+        : [];
+      const memberRaidRecords = filteredRaidRecords[0];
+
       // member_notes keys are in snake_case since toCamel uses { deep: false }
       const note = memberNotes?.note || '';
       const isReserved = memberNotes?.is_reserved || false;
