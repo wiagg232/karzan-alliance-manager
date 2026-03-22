@@ -21,6 +21,8 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
                 options: {
                     redirectTo: `${window.location.origin}${window.location.pathname}#/`,
                     scopes: 'guilds.members.read',
+                    skipBrowserRedirect: false,
+                    flowType: 'implicit'
                 },
             });
 
