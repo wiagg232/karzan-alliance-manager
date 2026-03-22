@@ -366,10 +366,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (session?.user && token && token.split('.').length === 3) {
         // 當 Discord 用戶主動登入時，觸發 sync-discord-roles（註冊/更新流程）
         if (event === 'SIGNED_IN') {
-          loadDiscordRoles(true);
+          await loadDiscordRoles(true);
         } else if (event === 'INITIAL_SESSION') {
           // 重新整理網頁時，只從資料庫讀取，不呼叫 Edge Function
-          loadDiscordRoles(false);
+          await loadDiscordRoles(false);
         }
       } else {
         setCurrentUser(null);
