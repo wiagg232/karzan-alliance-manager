@@ -22,6 +22,7 @@ export default function GuildsManager() {
   const [newGuildName, setNewGuildName] = useState('');
   const [newGuildTier, setNewGuildTier] = useState<number>(1);
   const [newGuildOrder, setNewGuildOrder] = useState<number>(1);
+  const [newGuildIsDisplay, setNewGuildIsDisplay] = useState<boolean>(false);
 
   useEffect(() => {
     fetchAllMembers();
@@ -55,6 +56,7 @@ export default function GuildsManager() {
   const handleOpenAddModal = () => {
     setNewGuildName('');
     setNewGuildTier(1);
+    setNewGuildIsDisplay(false);
     
     // Find the next order number for tier 1
     const tier1Guilds = sortedGuilds.filter(g => (g[1].tier || 1) === 1);
@@ -87,7 +89,7 @@ export default function GuildsManager() {
           name: newGuildName.trim(),
           tier: newGuildTier,
           orderNum: newGuildOrder,
-          isDisplay: true
+          isDisplay: newGuildIsDisplay
         });
       }
       setIsAddModalOpen(false);
@@ -304,6 +306,19 @@ export default function GuildsManager() {
                     min={1}
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+                  {t('common.status')}
+                </label>
+                <select
+                  className="w-full p-2 border border-stone-300 dark:border-stone-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-stone-800 dark:bg-stone-700 dark:text-stone-100"
+                  value={newGuildIsDisplay ? 'true' : 'false'}
+                  onChange={e => setNewGuildIsDisplay(e.target.value === 'true')}
+                >
+                  <option value="true">{t('common.show')}</option>
+                  <option value="false">{t('common.hide')}</option>
+                </select>
               </div>
             </div>
             <div className="p-6 border-t border-stone-200 dark:border-stone-700 flex justify-end gap-3 bg-stone-50 dark:bg-stone-800/50">

@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '@/store';
-import { Shield, Sword, Wand2, Key, Archive, Settings, AlertCircle, Lock, Link as LinkIcon } from 'lucide-react';
+import { Shield, Sword, Wand2, Archive, Settings, AlertCircle, Lock, Link as LinkIcon, Activity } from 'lucide-react';
 import { TabButton } from '../components/TabButton';
-import SinglePasswordUpdate from '../components/SinglePasswordUpdate';
-import BulkPasswordUpdate from '../components/BulkPasswordUpdate';
 import ArchivedMembersManager from '../components/ArchivedMembersManager';
 import AccessControlManager from '../components/AccessControlManager';
 import GuildsManager from '../components/GuildsManager';
@@ -11,15 +9,16 @@ import CostumesManager from '../components/CostumesManager';
 import ToolsManager from '../components/ToolsManager';
 import SettingsManager from '../components/SettingsManager';
 import BindingManager from '../components/BindingManager';
+import SystemLogsManager from '../components/SystemLogsManager';
 import { useTranslation } from 'react-i18next';
 import { logEvent } from '@/analytics';
 
 export default function AdminDashboard() {
   const { t } = useTranslation(['admin', 'translation']);
   const { db, userRole } = useAppContext();
-  const [activeTab, setActiveTab] = useState<'guilds' | 'costumes' | 'tools' | 'passwords' | 'archived' | 'settings' | 'access' | 'binding'>('guilds');
+  const [activeTab, setActiveTab] = useState<'guilds' | 'costumes' | 'tools' | 'archived' | 'settings' | 'access' | 'binding' | 'system_logs'>('guilds');
 
-  const handleTabChange = (tab: 'guilds' | 'costumes' | 'tools' | 'passwords' | 'archived' | 'settings' | 'access' | 'binding') => {
+  const handleTabChange = (tab: 'guilds' | 'costumes' | 'tools' | 'archived' | 'settings' | 'access' | 'binding' | 'system_logs') => {
     logEvent('AdminDashboard', 'Switch Tab', tab);
     setActiveTab(tab);
   };
@@ -42,9 +41,9 @@ export default function AdminDashboard() {
           <TabButton active={activeTab === 'archived'} onClick={() => handleTabChange('archived')} icon={<Archive />} label={t('nav.archived_members')} />
           {userRole !== 'manager' && (
             <>
-              <TabButton active={activeTab === 'passwords'} onClick={() => handleTabChange('passwords')} icon={<Key />} label={t('nav.change_password')} />
               <TabButton active={activeTab === 'tools'} onClick={() => handleTabChange('tools')} icon={<Wand2 />} label={t('nav.tools')} />
               <TabButton active={activeTab === 'access'} onClick={() => handleTabChange('access')} icon={<Lock />} label={t('nav.access_control')} />
+              <TabButton active={activeTab === 'system_logs'} onClick={() => handleTabChange('system_logs')} icon={<Activity />} label={t('nav.system_logs', '系統日誌')} />
               <TabButton active={activeTab === 'settings'} onClick={() => handleTabChange('settings')} icon={<Settings />} label={t('nav.settings')} />
             </>
           )}
@@ -55,39 +54,7 @@ export default function AdminDashboard() {
           {activeTab === 'costumes' && <CostumesManager />}
           {activeTab === 'binding' && userRole !== 'manager' && <BindingManager />}
           {activeTab === 'archived' && <ArchivedMembersManager />}
-          {activeTab === 'passwords' && userRole !== 'manager' && (
-            <div className="space-y-12">
-              <div className="bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-400 dark:border-amber-600 p-4 rounded-r-lg">
-                <div className="flex">
-                  <div className="py-1"><AlertCircle className="h-5 w-5 text-amber-500 mr-3" /></div>
-                  <div>
-                    <p className="font-bold text-amber-800 dark:text-amber-200">{t('common.info')}</p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      {t('guilds.auth_account_notice')} <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">"new_guild_name@kazran.com"</code>。
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <section>
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold text-stone-800 dark:text-stone-200">{t('passwords.single_update')}</h3>
-                  <p className="text-sm text-stone-500 dark:text-stone-400">{t('passwords.single_update_desc')}</p>
-                </div>
-                <SinglePasswordUpdate />
-              </section>
-
-              <div className="border-t border-stone-100 dark:border-stone-700 pt-12">
-                <section>
-                  <div className="mb-6">
-                    <h3 className="text-lg font-bold text-stone-800 dark:text-stone-200">{t('passwords.bulk_update')}</h3>
-                    <p className="text-sm text-stone-500 dark:text-stone-400">{t('passwords.bulk_update_desc')}</p>
-                  </div>
-                  <BulkPasswordUpdate />
-                </section>
-              </div>
-            </div>
-          )}
+          {activeTab === 'system_logs' && userRole !== 'manager' && <SystemLogsManager />}
           {activeTab === 'tools' && userRole !== 'manager' && <ToolsManager />}
           {activeTab === 'access' && userRole !== 'manager' && <AccessControlManager />}
           {activeTab === 'settings' && userRole !== 'manager' && <SettingsManager />}

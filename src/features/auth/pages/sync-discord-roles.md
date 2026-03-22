@@ -15,17 +15,50 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// 輔助寫入 system_logs 的函式
+async function logSystemEvent(
+  level: 'info' | 'warn' | 'error' | 'fatal',
+  action: string,
+  message: string,
+  details: any = {},
+  userId: string | null = null,
+  discordId: string | null = null
+) {
+  try {
+    await supabase.from('system_logs').insert({
+      level,
+      source: 'edge_sync_discord',
+      action,
+      message,
+      user_id: userId,
+      discord_id: discordId,
+      details
+    });
+  } catch (e) {
+    console.error("Failed to write to system_logs:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  let parsedBody: any = {};
+
   try {
+    // 1. 嘗試解析 body 以便在後續錯誤中能記錄 user_id 和 discord_id
+    // 注意：req.json() 只能呼叫一次，所以我們先存起來
+    parsedBody = await req.json().catch(() => ({}));
+    const { user_id, discord_id, username } = parsedBody;
+
     // 2. 驗證 JWT (這是修復 401 的關鍵)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      await logSystemEvent('error', 'missing_auth_header', 'Missing Authorization header', {}, user_id, discord_id);
       throw new Error("Missing Authorization header");
     }
+    
     // 建立一個使用 User Token 的 Client 來驗證身分
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -37,6 +70,7 @@ serve(async (req) => {
 
     if (authError || !user) {
       console.error("JWT 驗證失敗:", authError);
+      await logSystemEvent('error', 'jwt_verification_failed', 'JWT 驗證失敗', { error: authError }, user_id, discord_id);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -44,17 +78,18 @@ serve(async (req) => {
     }
 
     // 3. 驗證通過後，才執行後面的邏輯 (使用 SERVICE_ROLE_KEY 的 supabase 實例)
-    const { user_id, discord_id, username } = await req.json();
-
     if (!user_id || !discord_id || !username) {
+      await logSystemEvent('warn', 'missing_parameters', '缺少參數', { parsedBody }, user_id, discord_id);
       return new Response(JSON.stringify({ error: "缺少參數" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const DISCORD_BOT_TOKEN = Deno.env.get("DISCORD_BOT_TOKEN");
     if (!DISCORD_BOT_TOKEN) {
       console.error("Missing DISCORD_BOT_TOKEN environment variable");
+      await logSystemEvent('fatal', 'missing_bot_token', '伺服器設定錯誤：缺少 Discord Bot Token', {}, user_id, discord_id);
       return new Response(JSON.stringify({ error: "伺服器設定錯誤：缺少 Discord Bot Token" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    
     // 從 Discord API 取得成員角色
     const response = await fetch(
       `https://discord.com/api/v10/guilds/${GUILD_ID}/members/${discord_id}`,
@@ -69,6 +104,8 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Discord API Error (${response.status}):`, errorText);
+      await logSystemEvent('error', 'discord_api_error', `Discord API 錯誤: ${response.status}`, { errorText, status: response.status }, user_id, discord_id);
+      
       if (response.status === 401) {
         throw new Error("Discord Bot Token 無效或已過期 (401)");
       } else if (response.status === 403) {
@@ -100,6 +137,9 @@ serve(async (req) => {
       guildRoles = allRoles
         .filter((r: any) => r.name.match(/公會成員.+棕色2/) && memberRoleIds.includes(r.id))
         .map((r: any) => r.name.split("-")[0]);
+    } else {
+      const rolesErrorText = await rolesResponse.text();
+      await logSystemEvent('warn', 'discord_roles_api_error', `無法取得伺服器角色列表: ${rolesResponse.status}`, { errorText: rolesErrorText }, user_id, discord_id);
     }
 
     // 判斷角色等級
@@ -169,6 +209,11 @@ serve(async (req) => {
       
     if (upsertError) {
        console.error("寫入 profiles 發生錯誤:", upsertError);
+       // 這是最關鍵的 Log：紀錄 Upsert 失敗的詳細原因與當下的 dataRow
+       await logSystemEvent('error', 'upsert_profile_failed', '寫入 profiles 發生錯誤', { error: upsertError, dataRow }, user_id, discord_id);
+    } else {
+       // 成功時也可以記錄一筆 Info
+       await logSystemEvent('info', 'sync_success', '成功同步 Discord 角色與 Profile', { role, guildRoles, matchedId }, user_id, discord_id);
     }
 
     return new Response(
@@ -177,6 +222,9 @@ serve(async (req) => {
     );
   } catch (err: any) {
     console.error(err);
+    // 捕捉所有未預期的例外錯誤 (例如 getMemberAvatarUrl 裡的 BigInt 轉換錯誤)
+    await logSystemEvent('fatal', 'unhandled_exception', err.message || '未知的例外錯誤', { stack: err.stack, parsedBody }, parsedBody?.user_id, parsedBody?.discord_id);
+    
     return new Response(
       JSON.stringify({ error: err.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -205,6 +253,7 @@ function getMemberAvatarUrl(
     hash = globalAvatarHash;
   } else {
     // 完全沒頭像 → 預設
+    // 這裡如果 userId 是 undefined，BigInt 會拋錯，現在會被外層 catch 捕捉並寫入 system_logs
     const defaultIndex = Number(BigInt(userId) >> 22n) % 6; // 新系統推薦
     return `https://cdn.discordapp.com/embed/avatars/${defaultIndex}.png?size=${size}`;
   }
