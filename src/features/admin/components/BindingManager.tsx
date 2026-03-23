@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '@/store';
 import { supabase } from '@/shared/api/supabase';
-import { Search, Link as LinkIcon, User as UserIcon, Loader2, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
+import { Search, Link as LinkIcon, User as UserIcon, Loader2, CheckCircle2, AlertCircle, Copy, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Member } from '@/entities/member/types';
 import ConfirmModal from '@/shared/ui/ConfirmModal';
@@ -117,6 +117,15 @@ export default function BindingManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-stone-800 dark:text-stone-200">{t('binding.title')}</h2>
+        <button
+          onClick={fetchUnmatchedProfiles}
+          disabled={isLoading}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-stone-600 dark:text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors disabled:opacity-50"
+          title={t('common.refresh', '重新整理')}
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <span>{t('common.refresh', '重新整理')}</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
