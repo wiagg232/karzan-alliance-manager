@@ -207,7 +207,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const discordUsername = user.user_metadata?.full_name || user.user_metadata?.name;
 
-      if (forceSync) {
+      // 1. 先檢查資料庫有沒有這個人的 profile
+      let { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, user_role, user_guilds, display_name, avatar_url')
+        .eq('discord_id', discordId)
+        .maybeSingle();
+
+      // 2. 如果沒有 profile，代表是全新登入（或之前同步失敗），強制觸發 Edge Function
+      const shouldSync = forceSync || !existingProfile;
+
+      if (shouldSync) {
         try {
           const { data, error: invokeError } = await supabase.functions.invoke('sync-discord-roles', {
             headers: {
@@ -229,24 +239,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (error) {
           console.error('Error invoking edge function:', error);
         }
+
+        // 同步完後，重新抓取一次 profile
+        const { data: syncedProfile } = await supabase
+          .from('profiles')
+          .select('id, user_role, user_guilds, display_name, avatar_url')
+          .eq('discord_id', discordId)
+          .maybeSingle();
+          
+        existingProfile = syncedProfile;
       }
 
-      // Always fetch from the database to get the latest profile, whether edge function succeeded or failed
-      const { data: existingProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, user_role, user_guilds, display_name, avatar_url')
-        .eq('discord_id', discordId)
-        .maybeSingle();
-
-      if (!profileError && existingProfile) {
+      if (existingProfile) {
         setCurrentAvatarState(existingProfile.avatar_url);
         setCurrentUser(existingProfile.display_name || discordUsername || 'User');
         setUserRole(existingProfile.user_role || 'member');
         setuserGuildRolesState(existingProfile.user_guilds ? existingProfile.user_guilds.split(',').map((r: string) => r.trim()) : []);
       } else {
-        // Fallback if profile doesn't exist yet
-        setCurrentUser(discordUsername || 'User');
-        setUserRole('member');
+        // 如果同步後還是沒有 profile，代表他不在公會內，或是發生了其他錯誤
+        console.warn('Unauthorized login attempt: User not in guild or profile missing.');
+        
+        // 寫入系統日誌
+        await supabase.from('system_logs').insert({
+          level: 'warn',
+          source: 'frontend_auth',
+          action: 'unauthorized_login',
+          message: '未授權的登入嘗試 (不在公會內)',
+          user_id: user.id,
+          discord_id: discordId,
+          details: { username: discordUsername }
+        });
+
+        // 強制登出並清空狀態
+        await supabase.auth.signOut();
+        setCurrentUser(null);
+        setUserRole(null);
+        setuserGuildRolesState([]);
+        setCurrentAvatarState(null);
+        
+        // 延遲一點點顯示 Toast，確保畫面已經準備好
+        setTimeout(() => {
+          showToast('登入失敗：您不在指定的公會中', 'error');
+        }, 500);
       }
     } catch (error) {
       console.error('Error in loadDiscordRoles:', error);
