@@ -328,5 +328,12 @@
     "copyright": "© 2026 Browndust2 - Kazran Alliance System by 爽世 & ChaosOp. All rights reserved.",
     "disclaimer": "本網站與 Browndust2 無關，亦未獲得其認可。遊戲及其角色的所有商標和版權均歸其各自所有者所有。",
     "language": "語言"
+  },
+    "guilds": {
+    "guild_name": "公會名稱",
+    "serial": "序號",
+    "tier": "梯隊",
+    "order": "順序",
+    "member_count": "成員數"
   }
 }

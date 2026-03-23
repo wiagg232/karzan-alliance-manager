@@ -93,9 +93,9 @@ const AllianceRaidExportView = forwardRef<HTMLDivElement, AllianceRaidExportView
                                   <div className="flex items-center justify-end gap-1.5 mt-0.5">
                                     <div className={`font-black text-lg leading-none ${record?.rank && !record.rank.includes('%')
                                       ? 'bg-gradient-to-r from-amber-400 to-orange-600 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(245,158,11,0.6)] scale-110 transform origin-right'
-                                      : 'text-amber-500'
+                                      : record?.rank ? 'text-amber-500' : 'text-stone-600 italic'
                                       }`}>{record?.rank || '-'}</div>
-                                    {includeScore && record && record.score > 0 && <div className="text-[10px] text-stone-400 font-mono">({record.score.toLocaleString()})</div>}
+                                    {includeScore && record && record.rank && record.score > 0 && <div className="text-[10px] text-stone-400 font-mono">({record.score.toLocaleString()})</div>}
                                   </div>
                                 </div>
                               );
@@ -137,9 +137,9 @@ const AllianceRaidExportView = forwardRef<HTMLDivElement, AllianceRaidExportView
                                   <div className="flex items-center justify-end gap-1.5 mt-0.5">
                                     <div className={`font-black text-lg leading-none ${record?.rank && !record.rank.includes('%')
                                       ? 'bg-gradient-to-r from-amber-400 to-orange-600 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(245,158,11,0.6)] scale-110 transform origin-right'
-                                      : 'text-amber-500'
+                                      : record?.rank ? 'text-amber-500' : 'text-stone-600 italic'
                                       }`}>{record?.rank || '-'}</div>
-                                    {includeScore && record && record.score > 0 && <div className="text-[10px] text-stone-400 font-mono">({record.score.toLocaleString()})</div>}
+                                    {includeScore && record && record.rank && record.score > 0 && <div className="text-[10px] text-stone-400 font-mono">({record.score.toLocaleString()})</div>}
                                   </div>
                                 </div>
                               );
