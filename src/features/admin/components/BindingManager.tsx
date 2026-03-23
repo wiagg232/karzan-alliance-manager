@@ -24,6 +24,7 @@ export default function BindingManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Member[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isBinding, setIsBinding] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; member: Member | null }>({
     isOpen: false,
@@ -137,10 +138,10 @@ export default function BindingManager() {
           ) : (
             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
               {unmatchedProfiles.map((profile) => (
-                <button
+                <div
                   key={profile.discord_id}
                   onClick={() => setSelectedProfile(profile)}
-                  className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                  className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
                     selectedProfile?.discord_id === profile.discord_id
                       ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 ring-2 ring-indigo-500/20'
                       : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600'
@@ -163,18 +164,23 @@ export default function BindingManager() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(profile.discord_username);
-                                showToast(t('common.copied', '已複製'), 'success');
+                                setCopiedId(profile.discord_id);
+                                setTimeout(() => setCopiedId(null), 2000);
                               }}
                               className="p-1 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-md transition-colors text-stone-400 hover:text-indigo-500"
                               title={t('common.copy', '複製')}
                             >
-                              <Copy className="w-3 h-3" />
+                              {copiedId === profile.discord_id ? (
+                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
                             </button>
                           </div>
                         )}
                       </div>
                     </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
