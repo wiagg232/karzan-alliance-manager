@@ -46,6 +46,7 @@ export default function AllianceRaidRecord() {
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadConfig, setDownloadConfig] = useState<{ singleSeasonId: string }>({ singleSeasonId: '' });
   const [includeScore, setIncludeScore] = useState(false);
+  const [showScoreInTable, setShowScoreInTable] = useState(true);
 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -289,6 +290,26 @@ export default function AllianceRaidRecord() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
+                {t('alliance_raid.show_score', '顯示分數')}
+              </span>
+              <button
+                onClick={() => setShowScoreInTable(!showScoreInTable)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                  showScoreInTable ? 'bg-amber-600' : 'bg-stone-300 dark:bg-stone-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    showScoreInTable ? 'translate-x-[18px]' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="h-6 w-px bg-stone-300 dark:bg-stone-700 mx-1"></div>
+
             <button
               onClick={() => setIsDownloadModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
@@ -296,9 +317,10 @@ export default function AllianceRaidRecord() {
               <Download className="w-4 h-4" />
               <span>{t('alliance_raid.download_record')}</span>
             </button>
+
             <button
               onClick={() => navigate('/raid-manager')}
-              className="flex items-center justify-center p-2 bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg hover:bg-stone-300 dark:hover:bg-stone-600 transition-colors"
+              className="flex items-center justify-center p-2 bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg hover:bg-stone-300 dark:hover:bg-stone-600 transition-colors ml-1"
               title={t('header.guild_raid_manager', '公會聯合戰管理')}
             >
               <Undo2 className="w-5 h-5" />
@@ -444,7 +466,7 @@ export default function AllianceRaidRecord() {
                                         }`}>
                                         {record.rank}
                                       </div>
-                                      {record.score > 0 && (
+                                      {record.score > 0 && showScoreInTable && (
                                         <div className="text-[10px] text-stone-500 dark:text-stone-400 leading-tight">
                                           ({record.score.toLocaleString()})
                                         </div>
