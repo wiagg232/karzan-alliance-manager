@@ -24,6 +24,11 @@ export function useVersionCheck(checkIntervalMinutes: number = 5) {
           throw new Error('Failed to fetch meta.json');
         }
 
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Response is not JSON');
+        }
+
         const data = await response.json();
         const currentVersion = data.version;
 
