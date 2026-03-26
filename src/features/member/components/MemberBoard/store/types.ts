@@ -43,7 +43,7 @@ export type MemberBoardState = {
         memberId: string | null;
         isInDeletionArea: boolean;
     };
-    initialMemberStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string }>;
+    initialMemberStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string, isReserved?: boolean }>;
     isDraftInitialized: boolean;
     skipPersistUntilModified: boolean;
     notification: {

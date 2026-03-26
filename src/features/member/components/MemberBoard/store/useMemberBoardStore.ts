@@ -206,7 +206,7 @@ const initialState = {
         memberId: null,
         isInDeletionArea: false,
     },
-    initialMemberStates: {} as Record<string, { guildId: string; note?: string; role?: Role; color?: string }>,
+    initialMemberStates: {} as Record<string, { guildId: string; note?: string; role?: Role; color?: string; isReserved?: boolean }>,
     isDraftInitialized: false,
     skipPersistUntilModified: true,
     notification: {
@@ -360,10 +360,10 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
             return;
         }
 
-        const resolvedInitialStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string }> = {};
+        const resolvedInitialStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string; isReserved?: boolean }> = {};
         members.forEach(m => {
             if (m.id) {
-                resolvedInitialStates[m.id] = { guildId: m.guildId, note: m.note, role: m.role, color: m.color };
+                resolvedInitialStates[m.id] = { guildId: m.guildId, note: m.note, role: m.role, color: m.color, isReserved: m.isReserved };
             }
         });
 
@@ -379,6 +379,7 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                         guildId: draft.guildId,
                         role: draft.role ?? m.role,
                         color: draft.color ?? m.color,
+                        isReserved: draft.isReserved ?? m.isReserved,
                     };
                 }
                 return m;
@@ -394,6 +395,7 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                         guildId: draft?.guildId ?? m.guildId,
                         role: draft?.role ?? m.role,
                         color: draft?.color ?? m.color,
+                        isReserved: draft?.isReserved ?? m.isReserved,
                     };
                 });
 
@@ -407,17 +409,19 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
                         guildId: draft?.guildId ?? m.guildId,
                         role: draft?.role ?? m.role,
                         color: draft?.color ?? m.color,
+                        isReserved: draft?.isReserved ?? m.isReserved,
                     };
                 });
 
-            const mergedInitialStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string }> = {};
-            Object.entries<{ guildId: string; note?: string; role?: Role; color?: string }>(persisted.initialMemberStates).forEach(([id, state]) => {
+            const mergedInitialStates: Record<string, { guildId: string; note?: string; role?: Role; color?: string; isReserved?: boolean }> = {};
+            Object.entries<{ guildId: string; note?: string; role?: Role; color?: string; isReserved?: boolean }>(persisted.initialMemberStates).forEach(([id, state]) => {
                 const dbMember = members.find(m => m.id === id);
                 mergedInitialStates[id] = {
                     guildId: state.guildId,
                     note: dbMember?.note ?? state.note,
                     role: dbMember?.role ?? state.role,
                     color: dbMember?.color ?? state.color,
+                    isReserved: dbMember?.isReserved ?? state.isReserved,
                 };
             });
 
@@ -741,11 +745,13 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
         try {
             const isChanged = (member: Member) => {
                 const initial = initialMemberStates[member.id!];
+
                 if (!initial) return true;
                 return initial.guildId !== member.guildId ||
                     initial.note !== member.note ||
                     initial.role !== member.role ||
-                    initial.color !== member.color;
+                    initial.color !== member.color ||
+                    initial.isReserved !== member.isReserved;
             };
 
             const changedMembers = localMembers.filter(isChanged);
@@ -781,10 +787,10 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
             const notesChanged = (member: Member) => {
                 const initial = initialMemberStates[member.id!];
                 if (!initial) return true;
-                return initial.note !== member.note;
+                return initial.note !== member.note || initial.isReserved !== member.isReserved;
             };
 
-            const membersWithChangedNotes = localMembers.filter(m => notesChanged(m) || m.isReserved);
+            const membersWithChangedNotes = localMembers.filter(m => notesChanged(m));
 
             if (membersWithChangedNotes.length > 0) {
                 const memberIds = membersWithChangedNotes.map(m => m.id!);
@@ -841,7 +847,7 @@ export const useMemberBoardStore = create<MemberBoardStore>((set, get) => ({
             }
 
             const apiPayload = makeApiPayload(localMembers, deletedMembers, localGuilds, initialMemberStates);
-            sendApiAndNotify(set, apiPayload, localMembers.length);
+            sendApiAndNotify(set, apiPayload, changedMembers.length + membersWithChangedNotes.length + deletedMembers.length);
         } catch (err: unknown) {
             set({
                 notification: {
