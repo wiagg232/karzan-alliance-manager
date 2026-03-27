@@ -7,6 +7,7 @@ import * as htmlToImage from 'html-to-image';
 import { FiendHunterAddSeasonModal } from './FiendHunterAddSeasonModal';
 import { FiendHunterEditSeasonModal } from './FiendHunterEditSeasonModal';
 import { FiendHunterManageBossesModal } from './FiendHunterManageBossesModal';
+import { useTranslation } from 'react-i18next';
 
 export interface FiendHunterSeason {
   id?: string;
@@ -21,22 +22,35 @@ export interface FiendHunterBoss {
   hp: number;
 }
 
-const formatDamageParts = (damage: number) => {
+const formatDamageParts = (damage: number, t: any, language: string) => {
   const roundedDamage = Math.ceil(damage);
   const baseStr = roundedDamage.toLocaleString();
   
-  if (damage < 10000) {
-    return { baseStr, bracketStr: '' };
-  } else if (damage < 100000000) {
-    const wan = Math.ceil(damage / 10000);
-    return { baseStr, bracketStr: `(${wan}萬)` };
+  if (language.startsWith('zh')) {
+    if (damage < 10000) {
+      return { baseStr, bracketStr: '' };
+    } else if (damage < 100000000) {
+      const wan = Math.ceil(damage / 10000);
+      return { baseStr, bracketStr: t('toolbox:fiend_hunter.damage_wan', { amount: wan }) };
+    } else {
+      const yi = (Math.ceil(damage / 10000000) / 10).toFixed(1);
+      return { baseStr, bracketStr: t('toolbox:fiend_hunter.damage_yi', { amount: yi }) };
+    }
   } else {
-    const yi = (Math.ceil(damage / 10000000) / 10).toFixed(1);
-    return { baseStr, bracketStr: `(${yi}億)` };
+    if (damage < 1000000) {
+      return { baseStr, bracketStr: '' };
+    } else if (damage < 1000000000) {
+      const m = (Math.ceil(damage / 100000) / 10).toFixed(1);
+      return { baseStr, bracketStr: t('toolbox:fiend_hunter.damage_m', { amount: m }) };
+    } else {
+      const b = (Math.ceil(damage / 100000000) / 10).toFixed(1);
+      return { baseStr, bracketStr: t('toolbox:fiend_hunter.damage_b', { amount: b }) };
+    }
   }
 };
 
 export const FiendHunterBoard: React.FC = () => {
+  const { t, i18n } = useTranslation(['toolbox']);
   const { userRole, showToast } = useAppContext();
   const [seasons, setSeasons] = useState<FiendHunterSeason[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<FiendHunterSeason | null>(null);
@@ -69,7 +83,7 @@ export const FiendHunterBoard: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error fetching seasons:', error);
-      showToast('讀取賽季資料失敗', 'error');
+      showToast(t('toolbox:fiend_hunter.error_fetch_seasons'), 'error');
     }
   };
 
@@ -87,7 +101,7 @@ export const FiendHunterBoard: React.FC = () => {
       setBosses(data || []);
     } catch (error: any) {
       console.error('Error fetching bosses:', error);
-      showToast('讀取魔獸資料失敗', 'error');
+      showToast(t('toolbox:fiend_hunter.error_fetch_bosses'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +172,7 @@ export const FiendHunterBoard: React.FC = () => {
         link.click();
       } catch (error) {
         console.error('Error exporting image:', error);
-        showToast('匯出圖片失敗', 'error');
+        showToast(t('toolbox:fiend_hunter.error_export'), 'error');
       } finally {
         setIsExporting(false);
       }
@@ -166,7 +180,7 @@ export const FiendHunterBoard: React.FC = () => {
   };
 
   if (isLoading && !selectedSeason) {
-    return <div className="p-4 text-center text-stone-500 dark:text-stone-400">載入中...</div>;
+    return <div className="p-4 text-center text-stone-500 dark:text-stone-400">{t('toolbox:fiend_hunter.loading')}</div>;
   }
 
   const maxDifficulty = bosses.length;
@@ -187,16 +201,16 @@ export const FiendHunterBoard: React.FC = () => {
           <div className="flex justify-between items-end mb-4 border-b border-stone-200 dark:border-stone-700 pb-2">
             <div>
               <h1 className="text-3xl font-bold text-stone-800 dark:text-stone-100 tracking-tight">
-                魔獸討伐戰
+                {t('toolbox:fiend_hunter.board_title')}
               </h1>
               <div className="text-lg text-stone-500 dark:text-stone-400 mt-2 flex items-center gap-2">
-                <span className="font-semibold text-stone-700 dark:text-stone-300">賽季 {selectedSeason?.season}</span>
+                <span className="font-semibold text-stone-700 dark:text-stone-300">{t('toolbox:fiend_hunter.season', { season: selectedSeason?.season })}</span>
                 <span>|</span>
                 <span>{selectedSeason?.name}</span>
               </div>
             </div>
             <div className="text-[10px] text-stone-300 dark:text-stone-600 italic font-medium">
-              Created by 爽世@Kazran
+              {t('toolbox:fiend_hunter.created_by')}
             </div>
           </div>
         ) : (
@@ -211,7 +225,7 @@ export const FiendHunterBoard: React.FC = () => {
                 className="px-2 py-1 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-600 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 text-stone-800 dark:text-stone-100 font-medium"
               >
                 {seasons.map(s => (
-                  <option key={s.season} value={s.season}>賽季 {s.season}</option>
+                  <option key={s.season} value={s.season}>{t('toolbox:fiend_hunter.season', { season: s.season })}</option>
                 ))}
               </select>
               {selectedSeason && (
@@ -226,14 +240,14 @@ export const FiendHunterBoard: React.FC = () => {
                   <button
                     onClick={() => setIsAddSeasonModalOpen(true)}
                     className="p-2 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 rounded-md hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                    title="新增賽季"
+                    title={t('toolbox:fiend_hunter.add_season')}
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setIsEditSeasonModalOpen(true)}
                     className="p-2 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 rounded-md hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                    title="編輯賽季"
+                    title={t('toolbox:fiend_hunter.edit_season')}
                     disabled={!selectedSeason}
                   >
                     <Settings className="w-4 h-4" />
@@ -241,7 +255,7 @@ export const FiendHunterBoard: React.FC = () => {
                   <button
                     onClick={() => setIsBossModalOpen(true)}
                     className="p-2 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 rounded-md hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                    title="管理魔獸血量"
+                    title={t('toolbox:fiend_hunter.manage_bosses')}
                     disabled={!selectedSeason}
                   >
                     <Droplet className="w-4 h-4" />
@@ -251,7 +265,7 @@ export const FiendHunterBoard: React.FC = () => {
               <button
                 onClick={handleExportImage}
                 className="p-2 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 rounded-md hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                title="下載圖片"
+                title={t('toolbox:fiend_hunter.export_image')}
                 disabled={!selectedSeason}
               >
                 <Download className="w-4 h-4" />
@@ -263,9 +277,9 @@ export const FiendHunterBoard: React.FC = () => {
           <table className="w-auto text-left text-sm text-stone-600 dark:text-stone-300 border-collapse">
             <thead className="bg-stone-100 dark:bg-stone-900/50 text-stone-700 dark:text-stone-200">
               <tr>
-                <th className="px-3 py-0.5 font-medium whitespace-nowrap border border-stone-200 dark:border-stone-700">難度</th>
-                <th className="px-3 py-0.5 font-medium whitespace-nowrap text-center border border-stone-200 dark:border-stone-700">血量</th>
-                <th className="px-3 py-0.5 font-medium whitespace-nowrap text-center border border-stone-200 dark:border-stone-700 border-r-2 border-r-stone-400 dark:border-r-stone-500">一刀傷害要求</th>
+                <th className="px-3 py-0.5 font-medium whitespace-nowrap border border-stone-200 dark:border-stone-700">{t('toolbox:fiend_hunter.difficulty')}</th>
+                <th className="px-3 py-0.5 font-medium whitespace-nowrap text-center border border-stone-200 dark:border-stone-700">{t('toolbox:fiend_hunter.hp')}</th>
+                <th className="px-3 py-0.5 font-medium whitespace-nowrap text-center border border-stone-200 dark:border-stone-700 border-r-2 border-r-stone-400 dark:border-r-stone-500">{t('toolbox:fiend_hunter.required_damage')}</th>
                 {Array.from({ length: maxDifficulty }).map((_, i) => (
                   <th key={i} className={`px-1 py-0.5 font-medium whitespace-nowrap text-center border border-stone-200 dark:border-stone-700 w-6 min-w-[1.5rem] ${(i + 1) % 5 === 0 ? 'border-r-2 border-r-stone-400 dark:border-r-stone-500' : ''}`}>{i + 1}</th>
                 ))}
@@ -275,7 +289,7 @@ export const FiendHunterBoard: React.FC = () => {
               {bosses.length === 0 ? (
                 <tr>
                   <td colSpan={3 + maxDifficulty} className="px-3 py-4 text-center text-stone-500 dark:text-stone-400 border border-stone-200 dark:border-stone-700">
-                    尚無魔獸資料
+                    {t('toolbox:fiend_hunter.no_data')}
                   </td>
                 </tr>
               ) : (
@@ -286,7 +300,7 @@ export const FiendHunterBoard: React.FC = () => {
                   const actualRequiredPerLevel = currentHps.map((hp, i) => hp / stats.strikesPerLevel[i]);
                   const maxReq = Math.max(...actualRequiredPerLevel);
 
-                  const { baseStr, bracketStr } = formatDamageParts(stats.requiredDamage);
+                  const { baseStr, bracketStr } = formatDamageParts(stats.requiredDamage, t, i18n.language);
                   const rowBorderClass = boss.difficulty % 5 === 0 ? 'border-b-2 border-b-stone-400 dark:border-b-stone-500' : '';
                   const rowBgClass = boss.difficulty === 10 
                     ? 'bg-blue-100 dark:bg-blue-900/30' 
@@ -294,10 +308,10 @@ export const FiendHunterBoard: React.FC = () => {
                       ? 'bg-red-100 dark:bg-red-900/30' 
                       : 'hover:bg-stone-50 dark:hover:bg-stone-700/50';
                   const difficultyLabel = boss.difficulty === 10 
-                    ? 'Lv.10 (低保)' 
+                    ? t('toolbox:fiend_hunter.level_10_label') 
                     : boss.difficulty === 15 
-                      ? 'Lv.15 (絕望)' 
-                      : `Lv.${boss.difficulty}`;
+                      ? t('toolbox:fiend_hunter.level_15_label') 
+                      : t('toolbox:fiend_hunter.level', { level: boss.difficulty });
 
                   return (
                     <tr key={`${boss.season}-${boss.difficulty}`} className={`${rowBgClass} transition-colors`}>
@@ -340,7 +354,7 @@ export const FiendHunterBoard: React.FC = () => {
         </div>
         <div className={`text-sm text-stone-500 dark:text-stone-400 flex items-center gap-2 ${isExporting ? 'mt-4' : 'p-1.5 bg-stone-50 dark:bg-stone-800/50 border-t border-stone-200 dark:border-stone-700'}`}>
           <span className="inline-block w-4 h-4 bg-amber-100/50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 rounded"></span>
-          <span>高亮標示：需要在此難度達成最低一刀傷害要求</span>
+          <span>{t('toolbox:fiend_hunter.highlight_hint')}</span>
         </div>
       </div>
 

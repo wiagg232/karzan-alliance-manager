@@ -3,6 +3,7 @@ import { X, Plus, Trash2 } from 'lucide-react';
 import { supabaseUpsert, supabase } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
 import { FiendHunterSeason, FiendHunterBoss } from './FiendHunterBoard';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export const FiendHunterManageBossesModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, season, initialBosses }) => {
+  const { t } = useTranslation(['toolbox']);
   const { showToast } = useAppContext();
   const [draftBosses, setDraftBosses] = useState<{ difficulty: number; hp: number | '' }[]>([]);
 
@@ -54,7 +56,7 @@ export const FiendHunterManageBossesModal: React.FC<Props> = ({ isOpen, onClose,
     const validDrafts = draftBosses.filter(b => b.difficulty > 0 && b.hp !== '' && Number(b.hp) > 0);
     
     if (validDrafts.length === 0) {
-      showToast('請輸入有效的魔獸資料', 'warning');
+      showToast(t('toolbox:fiend_hunter.invalid_boss_data'), 'warning');
       return;
     }
 
@@ -83,12 +85,12 @@ export const FiendHunterManageBossesModal: React.FC<Props> = ({ isOpen, onClose,
       const { error } = await supabaseUpsert('fiend_hunter_bosses', payload, { onConflict: 'season,difficulty' });
 
       if (error) throw error;
-      showToast('魔獸資料更新成功', 'success');
+      showToast(t('toolbox:fiend_hunter.boss_update_success'), 'success');
       onSuccess();
       onClose();
     } catch (error: any) {
       console.error('Error upserting boss:', error);
-      showToast('更新魔獸資料失敗', 'error');
+      showToast(t('toolbox:fiend_hunter.boss_update_error'), 'error');
     }
   };
 
@@ -97,7 +99,7 @@ export const FiendHunterManageBossesModal: React.FC<Props> = ({ isOpen, onClose,
       <div className="bg-white dark:bg-stone-800 rounded-xl shadow-xl w-full max-w-lg border border-stone-200 dark:border-stone-700 flex flex-col max-h-[85vh]">
         <div className="flex justify-between items-center p-4 border-b border-stone-200 dark:border-stone-700 shrink-0">
           <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
-            管理魔獸血量 - 賽季 {season.season}
+            {t('toolbox:fiend_hunter.manage_bosses_title', { season: season.season })}
           </h3>
           <button
             onClick={onClose}
@@ -109,8 +111,8 @@ export const FiendHunterManageBossesModal: React.FC<Props> = ({ isOpen, onClose,
         
         <div className="p-4 overflow-y-auto flex-1">
           <div className="flex gap-2 px-2 mb-1">
-            <div className="w-20 text-xs font-medium text-stone-500 dark:text-stone-400 text-center">難度</div>
-            <div className="flex-1 text-xs font-medium text-stone-500 dark:text-stone-400 text-right pr-8">血量 (HP)</div>
+            <div className="w-20 text-xs font-medium text-stone-500 dark:text-stone-400 text-center">{t('toolbox:fiend_hunter.difficulty')}</div>
+            <div className="flex-1 text-xs font-medium text-stone-500 dark:text-stone-400 text-right pr-8">{t('toolbox:fiend_hunter.hp')}</div>
             <div className="w-8"></div>
           </div>
           <form id="boss-form" onSubmit={handleSaveBosses} className="space-y-2">
@@ -144,7 +146,7 @@ export const FiendHunterManageBossesModal: React.FC<Props> = ({ isOpen, onClose,
                   type="button"
                   onClick={() => handleRemoveDraftBoss(index)}
                   className="p-1.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-                  title="移除此難度"
+                  title={t('toolbox:fiend_hunter.remove_difficulty')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -157,7 +159,7 @@ export const FiendHunterManageBossesModal: React.FC<Props> = ({ isOpen, onClose,
               className="w-full py-2 mt-2 flex items-center justify-center gap-2 text-sm font-medium text-stone-600 dark:text-stone-300 border-2 border-dashed border-stone-300 dark:border-stone-600 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 hover:border-stone-400 dark:hover:border-stone-500 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              新增難度
+              {t('toolbox:fiend_hunter.add_difficulty')}
             </button>
           </form>
         </div>
@@ -168,14 +170,14 @@ export const FiendHunterManageBossesModal: React.FC<Props> = ({ isOpen, onClose,
             onClick={onClose}
             className="px-4 py-2 text-sm text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-md transition-colors"
           >
-            取消
+            {t('toolbox:fiend_hunter.cancel')}
           </button>
           <button
             type="submit"
             form="boss-form"
             className="px-4 py-2 text-sm bg-stone-800 dark:bg-stone-700 text-white rounded-md hover:bg-stone-700 dark:hover:bg-stone-600 transition-colors"
           >
-            儲存所有魔獸資料
+            {t('toolbox:fiend_hunter.save_all_bosses')}
           </button>
         </div>
       </div>

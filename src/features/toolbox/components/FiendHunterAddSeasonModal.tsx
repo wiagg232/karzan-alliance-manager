@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { supabaseUpsert } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, nextSeasonNumber }) => {
+  const { t } = useTranslation(['toolbox']);
   const { showToast } = useAppContext();
   const [editSeasonNumber, setEditSeasonNumber] = useState(nextSeasonNumber);
   const [editFiendName, setEditFiendName] = useState('');
@@ -39,7 +41,7 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
       const hasNewlinesWithoutCommas = editBossHps.includes('\n') && !editBossHps.includes(',');
 
       if (hasInvalidNumber || hasNewlinesWithoutCommas) {
-        showToast('魔獸血量格式不正確，請確保輸入的都是數字並以逗號分隔', 'error');
+        showToast(t('toolbox:fiend_hunter.hp_format_error'), 'error');
         return;
       }
 
@@ -64,12 +66,12 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
         if (bossError) throw bossError;
       }
 
-      showToast('賽季資料更新成功', 'success');
+      showToast(t('toolbox:fiend_hunter.season_update_success'), 'success');
       onSuccess(editSeasonNumber);
       onClose();
     } catch (error: any) {
       console.error('Error upserting season:', error);
-      showToast('更新賽季資料失敗', 'error');
+      showToast(t('toolbox:fiend_hunter.season_update_error'), 'error');
     }
   };
 
@@ -77,7 +79,7 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-stone-800 rounded-xl shadow-xl w-full max-w-3xl border border-stone-200 dark:border-stone-700 flex flex-col max-h-[85vh]">
         <div className="flex justify-between items-center p-4 border-b border-stone-200 dark:border-stone-700 shrink-0">
-          <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">新增賽季</h3>
+          <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">{t('toolbox:fiend_hunter.add_season')}</h3>
           <button
             onClick={onClose}
             className="text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors"
@@ -92,7 +94,7 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">賽季 (Season)</label>
+                    <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">{t('toolbox:fiend_hunter.season_label')}</label>
                     <input
                       type="number"
                       min="1"
@@ -103,7 +105,7 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">限定天數</label>
+                    <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">{t('toolbox:fiend_hunter.days')}</label>
                     <input
                       type="number"
                       min="1"
@@ -115,7 +117,7 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">魔獸名稱</label>
+                  <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">{t('toolbox:fiend_hunter.season_name')}</label>
                   <input
                     type="text"
                     value={editFiendName}
@@ -125,11 +127,11 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">魔獸血量</label>
+                  <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">{t('toolbox:fiend_hunter.boss_hp')}</label>
                   <textarea
                     value={editBossHps}
                     onChange={(e) => setEditBossHps(e.target.value)}
-                    placeholder="以逗點分隔每一個等級血量，輸入時毋須輸入最後3個0，例子：&#10;33,&#10;5440,&#10;26400,&#10;..."
+                    placeholder={t('toolbox:fiend_hunter.boss_hp_placeholder')}
                     className="w-full px-3 py-2 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-600 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 text-stone-800 dark:text-stone-100 min-h-[200px] resize-y"
                   />
                 </div>
@@ -137,18 +139,18 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
               
               {/* Preview Pane */}
               <div className="bg-stone-50 dark:bg-stone-900/50 rounded-lg p-4 border border-stone-200 dark:border-stone-700 flex flex-col h-full min-h-[250px]">
-                <h4 className="font-medium text-stone-800 dark:text-stone-100 mb-3">血量預覽</h4>
+                <h4 className="font-medium text-stone-800 dark:text-stone-100 mb-3">{t('toolbox:fiend_hunter.hp_preview')}</h4>
                 <div className="flex-1 overflow-y-auto pr-2">
                   {rawValues.length === 0 ? (
                     <div className="text-sm text-stone-500 dark:text-stone-400 text-center py-8">
-                      請在左側輸入血量以查看預覽
+                      {t('toolbox:fiend_hunter.preview_empty')}
                     </div>
                   ) : (
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-stone-500 dark:text-stone-400 border-b border-stone-200 dark:border-stone-700">
-                          <th className="text-left py-2 font-medium">難度 (Lv)</th>
-                          <th className="text-right py-2 font-medium">血量 (HP)</th>
+                          <th className="text-left py-2 font-medium">{t('toolbox:fiend_hunter.difficulty')}</th>
+                          <th className="text-right py-2 font-medium">{t('toolbox:fiend_hunter.hp')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -157,10 +159,10 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
                           const isInvalid = isNaN(hp) || hp <= 0;
                           return (
                             <tr key={index} className="border-b border-stone-100 dark:border-stone-800/50 last:border-0">
-                              <td className="py-2 text-stone-800 dark:text-stone-200">Lv.{index + 1}</td>
+                              <td className="py-2 text-stone-800 dark:text-stone-200">{t('toolbox:fiend_hunter.level', { level: index + 1 })}</td>
                               <td className="py-2 text-right text-stone-800 dark:text-stone-200">
                                 {isInvalid ? (
-                                  <span className="text-red-500">格式錯誤</span>
+                                  <span className="text-red-500">{t('toolbox:fiend_hunter.format_error')}</span>
                                 ) : (
                                   (hp * 1000).toLocaleString()
                                 )}
@@ -183,14 +185,14 @@ export const FiendHunterAddSeasonModal: React.FC<Props> = ({ isOpen, onClose, on
             onClick={onClose}
             className="px-4 py-2 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-md transition-colors"
           >
-            取消
+            {t('toolbox:fiend_hunter.cancel')}
           </button>
           <button
             type="submit"
             form="add-season-form"
             className="px-4 py-2 bg-stone-800 dark:bg-stone-700 text-white rounded-md hover:bg-stone-700 dark:hover:bg-stone-600 transition-colors"
           >
-            新增賽季
+            {t('toolbox:fiend_hunter.add_season')}
           </button>
         </div>
       </div>

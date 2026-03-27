@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { supabaseUpsert } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
 import { FiendHunterSeason } from './FiendHunterBoard';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export const FiendHunterEditSeasonModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, season }) => {
+  const { t } = useTranslation(['toolbox']);
   const { showToast } = useAppContext();
   const [editSeasonNumber, setEditSeasonNumber] = useState(1);
   const [editFiendName, setEditFiendName] = useState('');
@@ -38,12 +40,12 @@ export const FiendHunterEditSeasonModal: React.FC<Props> = ({ isOpen, onClose, o
 
       if (error) throw error;
 
-      showToast('賽季資料更新成功', 'success');
+      showToast(t('toolbox:fiend_hunter.season_update_success'), 'success');
       onSuccess();
       onClose();
     } catch (error: any) {
       console.error('Error upserting season:', error);
-      showToast('更新賽季資料失敗', 'error');
+      showToast(t('toolbox:fiend_hunter.season_update_error'), 'error');
     }
   };
 
@@ -51,7 +53,7 @@ export const FiendHunterEditSeasonModal: React.FC<Props> = ({ isOpen, onClose, o
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-stone-800 rounded-xl shadow-xl w-full max-w-md border border-stone-200 dark:border-stone-700 flex flex-col max-h-[85vh]">
         <div className="flex justify-between items-center p-4 border-b border-stone-200 dark:border-stone-700 shrink-0">
-          <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">修改賽季</h3>
+          <h3 className="text-lg font-semibold text-stone-800 dark:text-stone-100">{t('toolbox:fiend_hunter.edit_season')}</h3>
           <button
             onClick={onClose}
             className="text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors"
@@ -64,7 +66,7 @@ export const FiendHunterEditSeasonModal: React.FC<Props> = ({ isOpen, onClose, o
           <form id="edit-season-form" onSubmit={handleUpsertSeason} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">賽季 (Season)</label>
+                <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">{t('toolbox:fiend_hunter.season_label')}</label>
                 <input
                   type="number"
                   value={editSeasonNumber}
@@ -73,7 +75,7 @@ export const FiendHunterEditSeasonModal: React.FC<Props> = ({ isOpen, onClose, o
                 />
               </div>
               <div>
-                <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">限定天數</label>
+                <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">{t('toolbox:fiend_hunter.days')}</label>
                 <input
                   type="number"
                   min="1"
@@ -85,7 +87,7 @@ export const FiendHunterEditSeasonModal: React.FC<Props> = ({ isOpen, onClose, o
               </div>
             </div>
             <div>
-              <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">魔獸名稱</label>
+              <label className="block text-sm text-stone-500 dark:text-stone-400 mb-1">{t('toolbox:fiend_hunter.season_name')}</label>
               <input
                 type="text"
                 value={editFiendName}
@@ -103,14 +105,14 @@ export const FiendHunterEditSeasonModal: React.FC<Props> = ({ isOpen, onClose, o
             onClick={onClose}
             className="px-4 py-2 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-md transition-colors"
           >
-            取消
+            {t('toolbox:fiend_hunter.cancel')}
           </button>
           <button
             type="submit"
             form="edit-season-form"
             className="px-4 py-2 bg-stone-800 dark:bg-stone-700 text-white rounded-md hover:bg-stone-700 dark:hover:bg-stone-600 transition-colors"
           >
-            儲存賽季
+            {t('toolbox:fiend_hunter.save')}
           </button>
         </div>
       </div>
