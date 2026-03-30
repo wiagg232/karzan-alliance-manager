@@ -251,7 +251,7 @@
     "theme_light": "Light Mode",
     "theme_dark": "Dark Mode",
     "theme_system": "System Mode",
-    "discord_login_desc": "Please log in with your Discord account",
+    "discord_login_desc": "Please log in with your account eligible to Kazran Alliance Discord Channel",
     "login_with_discord": "Login with Discord"
   },
   "login": {
