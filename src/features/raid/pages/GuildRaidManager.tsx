@@ -9,6 +9,7 @@ import MemberStatsModal from '../components/MemberStatsModal';
 import TopControlBar from '../components/TopControlBar';
 import GuildSelection from '../components/GuildSelection';
 import SeasonActionsPanel from '../components/SeasonActionsPanel';
+import { useGhostRecords } from '../hooks/useGhostRecords';
 
 interface RaidSeason {
   id: string;
@@ -57,7 +58,7 @@ export default function GuildRaidManager() {
 
   const [draftRecords, setDraftRecords] = useState<Record<string, MemberRaidRecord>>({});
   const [guildRaidRecords, setGuildRaidRecords] = useState<Record<string, GuildRaidRecord>>({}); // key: guild_id
-  const [ghostRecords, setGhostRecords] = useState<Record<string, any[]>>({});
+  const { ghostRecords, fetchGhostRecords, handleAddGhostRecord: addGhostRecord, handleDeleteGhostRecord } = useGhostRecords();
   const [highlightedMemberIds, setHighlightedMemberIds] = useState<Set<string>>(new Set());
 
   const [loading, setLoading] = useState(true);
@@ -348,28 +349,6 @@ export default function GuildRaidManager() {
       }
     } finally {
       if (!isBackground) setLoading(false);
-    }
-  };
-
-  const fetchGhostRecords = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('ghost_records')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error && error.code !== '42P01') throw error;
-
-      const map: Record<string, any[]> = {};
-      if (data) {
-        data.forEach(record => {
-          if (!map[record.member_id]) map[record.member_id] = [];
-          map[record.member_id].push(record);
-        });
-      }
-      setGhostRecords(map);
-    } catch (err) {
-      console.error('Error fetching ghost records:', err);
     }
   };
 
@@ -793,52 +772,7 @@ export default function GuildRaidManager() {
   }, [isSelectedSeasonArchived]);
 
   const handleAddGhostRecord = async (memberId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('ghost_records')
-        .insert([{ member_id: memberId, season_number: selectedSeason?.season_number }])
-        .select();
-      if (error) throw error;
-      if (data && data.length > 0) {
-        setGhostRecords(prev => ({
-          ...prev,
-          [memberId]: [data[0], ...(prev[memberId] || [])]
-        }));
-      }
-    } catch (err) {
-      console.error('Error adding ghost record:', err);
-    }
-  };
-
-  const handleDeleteGhostRecord = async (memberId: string, record: any) => {
-    try {
-      let query = supabase.from('ghost_records').delete();
-
-      if (record.id) {
-        query = query.eq('id', record.id);
-      } else if (record.uid) {
-        query = query.eq('uid', record.uid);
-      } else if (record.created_at) {
-        query = query.eq('member_id', memberId).eq('created_at', record.created_at);
-      } else {
-        console.error('Cannot delete ghost record: no unique identifier found');
-        return;
-      }
-
-      const { error } = await query;
-      if (error) throw error;
-
-      setGhostRecords(prev => ({
-        ...prev,
-        [memberId]: (prev[memberId] || []).filter(r => {
-          if (record.id) return r.id !== record.id;
-          if (record.uid) return r.uid !== record.uid;
-          return r.created_at !== record.created_at;
-        })
-      }));
-    } catch (err) {
-      console.error('Error deleting ghost record:', err);
-    }
+    await addGhostRecord(memberId, selectedSeason?.season_number);
   };
 
   if (!canManage) {
