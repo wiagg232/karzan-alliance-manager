@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '@/store';
 import { AlertCircle } from 'lucide-react';
@@ -14,11 +14,12 @@ import { useRaidRecordEditor } from '../hooks/useRaidRecordEditor';
 import { useSeasonManager } from '../hooks/useSeasonManager';
 import { useGuildStats } from '../hooks/useGuildStats';
 import { useTableLayout } from '../hooks/useTableLayout';
+import type { Member } from '@/entities/member/types';
 
 export default function GuildRaidManager() {
   const { t } = useTranslation(['raid', 'translation']);
   const navigate = useNavigate();
-  const { db, userRole, userGuildRoles, fetchAllMembers } = useAppContext();
+  const { db, setDb, userRole, userGuildRoles, fetchAllMembers } = useAppContext();
 
   const canManage = userRole === 'manager' || userRole === 'admin' || userRole === 'creator';
   const userGuilds = userGuildRoles.length > 0
@@ -33,10 +34,29 @@ export default function GuildRaidManager() {
   const [sortConfig, setSortConfig] = useState<{ key: 'default' | 'score'; order: 'asc' | 'desc' }>({ key: 'default', order: 'asc' });
   const [selectedMemberStats, setSelectedMemberStats] = useState<any>(null);
 
-  const { ghostRecords, fetchGhostRecords, handleAddGhostRecord: addGhostRecord, handleDeleteGhostRecord } = useGhostRecords();
+  const { ghostRecords, fetchGhostRecordsForMember, fetchGhostRecordsForMembers, handleAddGhostRecord: addGhostRecord, handleDeleteGhostRecord } = useGhostRecords();
   const { availableGuilds, guildsByTier, guildMemberCounts } = useGuildStats(canManage, targetTier);
 
-  const raidData = useRaidData(fetchAllMembers);
+  const updateMemberNote = useCallback((memberId: string, payload: Record<string, any>) => {
+    setDb(prev => {
+      const member = prev.members[memberId];
+      if (!member) return prev;
+      return {
+        ...prev,
+        members: {
+          ...prev.members,
+          [memberId]: {
+            ...member,
+            ...(payload.note !== undefined && { note: payload.note }),
+            ...(payload.is_reserved !== undefined && { isReserved: payload.is_reserved }),
+            ...(payload.archive_remark !== undefined && { archiveRemark: payload.archive_remark }),
+          },
+        },
+      };
+    });
+  }, [setDb]);
+
+  const raidData = useRaidData(fetchAllMembers, updateMemberNote);
 
   const editor = useRaidRecordEditor({
     selectedSeasonId: raidData.selectedSeasonId,
@@ -70,6 +90,7 @@ export default function GuildRaidManager() {
   }, [availableGuilds]);
 
   // Background refresh when guild selection changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (raidData.selectedSeasonId && selectedGuildIds.length > 0) {
       raidData.fetchRecords(true);
@@ -77,10 +98,21 @@ export default function GuildRaidManager() {
     }
   }, [selectedGuildIds]);
 
-  // Fetch ghost records when season changes
+  // Bulk-fetch ghost counts whenever the visible member list changes
+  // (fires after guild switch AND after fetchAllMembers resolves)
+  const selectedGuildMemberIds = useMemo(() =>
+    selectedGuildIds.flatMap(guildId =>
+      Object.values(db.members)
+        .filter(m => m.guildId === guildId)
+        .map(m => m.id!)
+        .filter(Boolean)
+    ),
+    [selectedGuildIds, db.members]
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (raidData.selectedSeasonId) fetchGhostRecords();
-  }, [raidData.selectedSeasonId]);
+    if (selectedGuildMemberIds.length > 0) fetchGhostRecordsForMembers(selectedGuildMemberIds);
+  }, [selectedGuildMemberIds]);
 
   // Collapse to single guild when leaving comparison mode
   useEffect(() => {
@@ -89,7 +121,7 @@ export default function GuildRaidManager() {
     }
   }, [isComparisonMode]);
 
-  const handleGuildToggle = (guildId: string) => {
+  const handleGuildToggle = useCallback((guildId: string) => {
     if (isComparisonMode) {
       setSelectedGuildIds(prev => {
         if (prev.includes(guildId)) {
@@ -102,43 +134,46 @@ export default function GuildRaidManager() {
     } else {
       setSelectedGuildIds([guildId]);
     }
-  };
+  }, [isComparisonMode]);
 
-  const handleSort = (key: 'default' | 'score') => {
+  const handleSort = useCallback((key: 'default' | 'score') => {
     setSortConfig(prev => {
       if (prev.key === key) return { key, order: prev.order === 'asc' ? 'desc' : 'asc' };
       return { key, order: key === 'score' ? 'desc' : 'asc' };
     });
-  };
+  }, []);
 
-  const getSortedMembers = (guildId: string) => {
-    const guildMembers = Object.values(db.members).filter(m => {
-      if (raidData.isSelectedSeasonArchived) {
-        return raidData.records[m.id!]?.season_guild === guildId;
-      }
-      return m.guildId === guildId;
-    });
-
-    return guildMembers.sort((a, b) => {
-      if (sortConfig.key === 'score') {
-        const scoreA = editor.draftRecords[a.id!]?.score ?? raidData.records[a.id!]?.score ?? 0;
-        const scoreB = editor.draftRecords[b.id!]?.score ?? raidData.records[b.id!]?.score ?? 0;
-        if (scoreA !== scoreB) {
-          return sortConfig.order === 'desc' ? scoreB - scoreA : scoreA - scoreB;
+  const sortedMembersMap = useMemo(() => {
+    const map: Record<string, Member[]> = {};
+    for (const guildId of selectedGuildIds) {
+      const guildMembers = Object.values(db.members).filter(m => {
+        if (raidData.isSelectedSeasonArchived) {
+          return raidData.records[m.id!]?.season_guild === guildId;
         }
-      }
-      const roleOrder: Record<string, number> = { leader: 1, coleader: 2, member: 3 };
-      const orderA = roleOrder[a.role] || 99;
-      const orderB = roleOrder[b.role] || 99;
-      if (orderA !== orderB) return sortConfig.order === 'desc' ? orderB - orderA : orderA - orderB;
-      const nameCompare = a.name.localeCompare(b.name);
-      return sortConfig.order === 'desc' ? -nameCompare : nameCompare;
-    });
-  };
+        return m.guildId === guildId;
+      });
+      map[guildId] = guildMembers.sort((a, b) => {
+        if (sortConfig.key === 'score') {
+          const scoreA = editor.draftRecords[a.id!]?.score ?? raidData.records[a.id!]?.score ?? 0;
+          const scoreB = editor.draftRecords[b.id!]?.score ?? raidData.records[b.id!]?.score ?? 0;
+          if (scoreA !== scoreB) {
+            return sortConfig.order === 'desc' ? scoreB - scoreA : scoreA - scoreB;
+          }
+        }
+        const roleOrder: Record<string, number> = { leader: 1, coleader: 2, member: 3 };
+        const orderA = roleOrder[a.role] || 99;
+        const orderB = roleOrder[b.role] || 99;
+        if (orderA !== orderB) return sortConfig.order === 'desc' ? orderB - orderA : orderA - orderB;
+        const nameCompare = a.name.localeCompare(b.name);
+        return sortConfig.order === 'desc' ? -nameCompare : nameCompare;
+      });
+    }
+    return map;
+  }, [selectedGuildIds, db.members, raidData.records, raidData.isSelectedSeasonArchived, sortConfig, editor.draftRecords]);
 
-  const handleAddGhostRecord = async (memberId: string) => {
+  const handleAddGhostRecord = useCallback(async (memberId: string) => {
     await addGhostRecord(memberId, raidData.selectedSeason?.season_number);
-  };
+  }, [addGhostRecord, raidData.selectedSeason?.season_number]);
 
   const getTierColorActive = (tier: number) => {
     switch (tier) {
@@ -216,6 +251,7 @@ export default function GuildRaidManager() {
           isComparisonMode={isComparisonMode}
           getTierColorActive={getTierColorActive}
           guildMemberCounts={guildMemberCounts}
+          disabled={raidData.loading}
         />
 
         <div className={`flex-1 grid gap-4 ${isComparisonMode ? `grid-cols-1 md:grid-cols-${Math.min(selectedGuildIds.length, 4)}` : 'grid-cols-1'}`}>
@@ -224,7 +260,7 @@ export default function GuildRaidManager() {
               key={guildId}
               guildId={guildId}
               guild={db.guilds[guildId]}
-              sortedMembers={getSortedMembers(guildId)}
+              sortedMembers={sortedMembersMap[guildId] ?? []}
               records={raidData.records}
               draftRecords={editor.draftRecords}
               guildRaidRecord={raidData.guildRaidRecords[guildId]}
@@ -238,7 +274,7 @@ export default function GuildRaidManager() {
               onSort={handleSort}
               onRecordChange={editor.handleRecordChange}
               onGuildNoteChange={editor.handleGuildNoteChange}
-              onBlur={(memberId) => editor.handleAutoSave(memberId, guildId)}
+              onBlur={editor.handleAutoSave}
               onMemberClick={setSelectedMemberStats}
               rowHeights={layout.rowHeights}
               onRowHeightChange={layout.handleRowHeightChange}
@@ -248,6 +284,7 @@ export default function GuildRaidManager() {
               onTheadHeightChange={layout.handleTheadHeightChange}
               highlightedMemberIds={raidData.highlightedMemberIds}
               ghostRecords={ghostRecords}
+              onFetchGhostRecords={fetchGhostRecordsForMember}
               onAddGhostRecord={handleAddGhostRecord}
               onDeleteGhostRecord={handleDeleteGhostRecord}
             />

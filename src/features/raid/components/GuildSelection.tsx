@@ -9,6 +9,7 @@ interface GuildSelectionProps {
   isComparisonMode: boolean;
   getTierColorActive: (tier: number) => string;
   guildMemberCounts?: Record<string, number>;
+  disabled?: boolean;
 }
 
 const MAX_MEMBERS = 30;
@@ -20,6 +21,7 @@ const GuildSelection: React.FC<GuildSelectionProps> = ({
   isComparisonMode,
   getTierColorActive,
   guildMemberCounts = {},
+  disabled = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const { t } = useTranslation(['raid', 'translation']);
@@ -58,8 +60,11 @@ const GuildSelection: React.FC<GuildSelectionProps> = ({
           </div>
           <button
             onClick={handleCopy}
+            disabled={disabled}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors
-              ${copied
+              ${disabled
+                ? 'opacity-50 cursor-not-allowed border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400'
+                : copied
                 ? 'border-emerald-500/40 text-emerald-500 bg-transparent'
                 : 'border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:bg-stone-100/60 dark:hover:bg-stone-800/60'
               }`}
@@ -96,11 +101,12 @@ const GuildSelection: React.FC<GuildSelectionProps> = ({
                       <button
                         key={guild.id}
                         onClick={() => handleGuildToggle(guild.id!)}
+                        disabled={disabled}
                         className={`px-2.5 py-1 rounded text-[12px] font-medium transition-all border ${
                           isSelected
                             ? getTierColorActive(tier)
                             : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
-                        }`}
+                        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {isComparisonMode && (
                           <input

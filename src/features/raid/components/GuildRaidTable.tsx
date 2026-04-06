@@ -1,26 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Pencil, Save, X, ArrowDownWideNarrow, ArrowDownNarrowWide, Copy, Check, Ghost, Ban } from 'lucide-react';
+import { Search, Pencil, ArrowDownWideNarrow, ArrowDownNarrowWide, Copy, Check, Ghost } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Member, Guild } from '@/entities/member/types';
 import { deduceScore } from '../utils/scoreDeduction';
-import ConfirmModal from '@shared/ui/ConfirmModal';
-
-interface MemberRaidRecord {
-  id?: string;
-  season_id: string;
-  member_id: string;
-  score: number;
-  note: string;
-  season_note?: string;
-  season_guild?: string;
-}
-
-interface GuildRaidRecord {
-  season_id: string;
-  guild_id: string;
-  member_score_median: number;
-  note?: string;
-}
+import GhostRecordModal from './GhostRecordModal';
+import type { MemberRaidRecord, GuildRaidRecord } from '../types';
 
 interface GuildRaidTableProps {
   guildId: string;
@@ -39,7 +23,7 @@ interface GuildRaidTableProps {
   onSort: (key: 'default' | 'score') => void;
   onRecordChange: (memberId: string, field: 'score' | 'note' | 'season_note', value: string | number) => void;
   onGuildNoteChange?: (guildId: string, note: string) => void;
-  onBlur: (memberId: string) => void;
+  onBlur: (memberId: string, guildId: string) => void;
   onMemberClick: (member: Member) => void;
   rowHeights?: Record<number, number>;
   onRowHeightChange?: (index: number, height: number) => void;
@@ -49,11 +33,12 @@ interface GuildRaidTableProps {
   onTheadHeightChange?: (height: number) => void;
   highlightedMemberIds?: Set<string>;
   ghostRecords?: Record<string, any[]>;
+  onFetchGhostRecords?: (memberId: string) => void;
   onAddGhostRecord?: (memberId: string) => void;
   onDeleteGhostRecord?: (memberId: string, record: any) => void;
 }
 
-export default function GuildRaidTable({
+function GuildRaidTable({
   guildId,
   guild,
   sortedMembers,
@@ -80,6 +65,7 @@ export default function GuildRaidTable({
   onTheadHeightChange,
   highlightedMemberIds,
   ghostRecords = {},
+  onFetchGhostRecords,
   onAddGhostRecord,
   onDeleteGhostRecord
 }: GuildRaidTableProps) {
@@ -96,20 +82,6 @@ export default function GuildRaidTable({
   const [guildNoteInput, setGuildNoteInput] = useState('');
   const [copiedMemberId, setCopiedMemberId] = useState<string | null>(null);
   const [ghostModalMember, setGhostModalMember] = useState<Member | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {}
-  });
-
-  const closeConfirmModal = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
-
   const displayGuildNote = guildRaidRecord?.note || '';
 
   const handleCopyName = (e: React.MouseEvent, name: string, memberId: string) => {
@@ -329,7 +301,7 @@ export default function GuildRaidTable({
                           )}
                         </button>
                         <button
-                          onClick={() => setGhostModalMember(member)}
+                          onClick={() => { setGhostModalMember(member); onFetchGhostRecords?.(member.id!); }}
                           className={`p-1 rounded-md transition-all flex items-center gap-1 ${
                             (ghostRecords[member.id!]?.length || 0) > 0
                               ? 'text-amber-500 hover:bg-stone-100 dark:hover:bg-stone-700 opacity-100'
@@ -354,7 +326,7 @@ export default function GuildRaidTable({
                           max="10000"
                           value={record.score || ''}
                           onChange={(e) => onRecordChange(member.id!, 'score', e.target.value)}
-                          onBlur={() => onBlur(member.id!)}
+                          onBlur={() => onBlur(member.id!, guildId)}
                           className={`w-full px-2 py-0.5 text-xs border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
                         />
                       ) : (
@@ -377,7 +349,7 @@ export default function GuildRaidTable({
                               type="text"
                               value={noteValue}
                               onChange={(e) => onRecordChange(member.id!, 'note', e.target.value)}
-                              onBlur={() => onBlur(member.id!)}
+                              onBlur={() => onBlur(member.id!, guildId)}
                               className={`w-full px-2 py-0.5 text-xs border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
                             />
                           ) : (
@@ -394,7 +366,7 @@ export default function GuildRaidTable({
                               type="text"
                               value={record.season_note || ''}
                               onChange={(e) => onRecordChange(member.id!, 'season_note', e.target.value)}
-                              onBlur={() => onBlur(member.id!)}
+                              onBlur={() => onBlur(member.id!, guildId)}
                               className={`w-full px-2 py-0.5 text-xs border rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-indigo-500 outline-none ${isDirty ? 'border-amber-300 dark:border-amber-600' : 'border-stone-300 dark:border-stone-600'}`}
                             />
                           ) : (
@@ -422,100 +394,17 @@ export default function GuildRaidTable({
         )}
       </div>
 
-      {/* Ghost Modal */}
       {ghostModalMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-stone-200 dark:border-stone-700">
-            <div className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-stone-700">
-              <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
-                <Ghost className="w-5 h-5 text-amber-500" />
-                {ghostModalMember.name} - {t('raid.ghost_log_title', '招魂紀錄')}
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onAddGhostRecord?.(ghostModalMember.id!)}
-                  className="px-3 py-1.5 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-1"
-                >
-                  <Ghost className="w-4 h-4" />
-                  {t('raid.ghost_log_button', '招魂')}
-                </button>
-                <button
-                  onClick={() => setGhostModalMember(null)}
-                  className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="p-4 max-h-[60vh] overflow-y-auto">
-              {ghostRecords[ghostModalMember.id!]?.length ? (
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-stone-200 dark:border-stone-700">
-                      <th className="py-2 font-medium text-stone-500 dark:text-stone-400">
-                        {t('alliance_raid.season_label', '賽季')}
-                      </th>
-                      <th className="py-2 font-medium text-stone-500 dark:text-stone-400">
-                        {t('common.date', '日期')}
-                      </th>
-                      <th className="py-2 font-medium text-stone-500 dark:text-stone-400 w-10 text-center">
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...ghostRecords[ghostModalMember.id!]]
-                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                      .map((record, idx) => (
-                        <tr key={record.id || record.uid || idx} className="border-b border-stone-100 dark:border-stone-700/50 group/ghost">
-                          <td className="py-2 text-stone-800 dark:text-stone-200">
-                            {record.season_number ? `S${record.season_number}` : '-'}
-                          </td>
-                          <td className="py-2 text-stone-600 dark:text-stone-400">
-                            {new Date(record.created_at).toLocaleString()}
-                          </td>
-                          <td className="py-2 text-center">
-                            <button
-                              onClick={() => {
-                                setConfirmModal({
-                                  isOpen: true,
-                                  title: t('raid.ghost_log_delete_title', '刪除招魂紀錄'),
-                                  message: t('raid.ghost_log_delete_desc', '確定要刪除這筆招魂紀錄嗎？此操作無法復原。'),
-                                  onConfirm: () => {
-                                    if (onDeleteGhostRecord) {
-                                      onDeleteGhostRecord(ghostModalMember.id!, record);
-                                    }
-                                    closeConfirmModal();
-                                  }
-                                });
-                              }}
-                              className="p-1 text-stone-400 hover:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/30 opacity-0 group-hover/ghost:opacity-100 transition-all"
-                              title={t('common.delete', '刪除')}
-                            >
-                              <Ban className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="text-center py-8 text-stone-500 dark:text-stone-400">
-                  <Ghost className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p>{t('raid.ghost_log_empty', '目前沒有招魂紀錄')}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <GhostRecordModal
+          member={ghostModalMember}
+          ghostRecords={ghostRecords}
+          onAddGhostRecord={onAddGhostRecord}
+          onDeleteGhostRecord={onDeleteGhostRecord}
+          onClose={() => setGhostModalMember(null)}
+        />
       )}
-
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={closeConfirmModal}
-      />
     </div>
   );
 }
+
+export default React.memo(GuildRaidTable);

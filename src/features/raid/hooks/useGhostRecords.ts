@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/shared/api/supabase';
 
 export function useGhostRecords() {
   const [ghostRecords, setGhostRecords] = useState<Record<string, any[]>>({});
+  const fetchedMemberIds = useRef<Set<string>>(new Set());
 
   const fetchGhostRecords = useCallback(async () => {
     try {
@@ -26,6 +27,25 @@ export function useGhostRecords() {
     }
   }, []);
 
+  const fetchGhostRecordsForMember = useCallback(async (memberId: string) => {
+    if (fetchedMemberIds.current.has(memberId)) return;
+    fetchedMemberIds.current.add(memberId);
+    try {
+      const { data, error } = await supabase
+        .from('ghost_records')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('created_at', { ascending: false });
+
+      if (error && error.code !== '42P01') throw error;
+
+      setGhostRecords(prev => ({ ...prev, [memberId]: data || [] }));
+    } catch (err) {
+      fetchedMemberIds.current.delete(memberId); // allow retry on error
+      console.error('Error fetching ghost records for member:', err);
+    }
+  }, []);
+
   const handleAddGhostRecord = useCallback(async (memberId: string, seasonNumber?: number) => {
     try {
       const { data, error } = await supabase
@@ -41,6 +61,35 @@ export function useGhostRecords() {
       }
     } catch (err) {
       console.error('Error adding ghost record:', err);
+    }
+  }, []);
+
+  const fetchGhostRecordsForMembers = useCallback(async (memberIds: string[]) => {
+    const unfetched = memberIds.filter(id => !fetchedMemberIds.current.has(id));
+    if (unfetched.length === 0) return;
+
+    unfetched.forEach(id => fetchedMemberIds.current.add(id));
+    try {
+      const { data, error } = await supabase
+        .from('ghost_records')
+        .select('*')
+        .in('member_id', unfetched)
+        .order('created_at', { ascending: false });
+
+      if (error && error.code !== '42P01') throw error;
+
+      setGhostRecords(prev => {
+        const next = { ...prev };
+        unfetched.forEach(id => { next[id] = next[id] ?? []; });
+        (data || []).forEach(record => {
+          if (!next[record.member_id]) next[record.member_id] = [];
+          next[record.member_id].push(record);
+        });
+        return next;
+      });
+    } catch (err) {
+      unfetched.forEach(id => fetchedMemberIds.current.delete(id));
+      console.error('Error fetching ghost records for members:', err);
     }
   }, []);
 
@@ -78,7 +127,9 @@ export function useGhostRecords() {
   return {
     ghostRecords,
     fetchGhostRecords,
+    fetchGhostRecordsForMember,
+    fetchGhostRecordsForMembers,
     handleAddGhostRecord,
-    handleDeleteGhostRecord
+    handleDeleteGhostRecord,
   };
 }

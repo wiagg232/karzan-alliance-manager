@@ -2,7 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/shared/api/supabase';
 import type { RaidSeason, MemberRaidRecord, GuildRaidRecord } from '../types';
 
-export function useRaidData(fetchAllMembers: () => void) {
+export function useRaidData(
+  fetchAllMembers: () => void,
+  updateMemberNote: (memberId: string, payload: Record<string, any>) => void,
+) {
   const [seasons, setSeasons] = useState<RaidSeason[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState('');
   const [records, setRecords] = useState<Record<string, MemberRaidRecord>>({});
@@ -13,6 +16,13 @@ export function useRaidData(fetchAllMembers: () => void) {
 
   const recordsRef = useRef(records);
   useEffect(() => { recordsRef.current = records; }, [records]);
+
+  const fetchTokenRef = useRef(0);
+
+  // Stable ref for updateMemberNote — avoids adding the prop to subscription effect deps
+  // (same pattern as fetchAllMembers; callers must ensure the function is stable)
+  const updateMemberNoteRef = useRef(updateMemberNote);
+  updateMemberNoteRef.current = updateMemberNote;
 
   const flashMember = useCallback((memberId: string) => {
     setHighlightedMemberIds(prev => { const next = new Set(prev); next.add(memberId); return next; });
@@ -37,14 +47,20 @@ export function useRaidData(fetchAllMembers: () => void) {
   }, []);
 
   const fetchRecords = useCallback(async (isBackground = false) => {
+    const token = ++fetchTokenRef.current;
     const seasonId = selectedSeasonId;
-    if (!seasonId) return;
+    if (!seasonId) {
+      if (!isBackground) setLoading(false);
+      return;
+    }
     if (!isBackground) setLoading(true);
     try {
       const [recordsRes, guildRecordsRes] = await Promise.all([
         supabase.from('member_raid_records').select('*').eq('season_id', seasonId),
         supabase.from('guild_raid_records').select('*').eq('season_id', seasonId),
       ]);
+
+      if (token !== fetchTokenRef.current) return;
 
       if (recordsRes.error && recordsRes.error.code !== '42P01') throw recordsRes.error;
       if (guildRecordsRes.error && guildRecordsRes.error.code !== '42P01') throw guildRecordsRes.error;
@@ -57,9 +73,12 @@ export function useRaidData(fetchAllMembers: () => void) {
       (guildRecordsRes.data || []).forEach(r => { guildRecordsMap[r.guild_id] = r; });
       setGuildRaidRecords(guildRecordsMap);
     } catch (err: any) {
+      if (token !== fetchTokenRef.current) return;
       console.error('Error fetching records:', err);
       if (err.code !== '42P01') setError(err.message);
     } finally {
+      // Foreground fetches always clear loading regardless of token —
+      // background fetches never set loading=true so they don't clear it either.
       if (!isBackground) setLoading(false);
     }
   }, [selectedSeasonId]);
@@ -110,8 +129,13 @@ export function useRaidData(fetchAllMembers: () => void) {
       .channel('member_notes_all')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'member_notes' }, (payload) => {
         const memberId = (payload.new as any)?.member_id || (payload.old as any)?.member_id;
-        if (memberId) flashMember(memberId);
-        fetchAllMembers();
+        if (!memberId) return;
+        flashMember(memberId);
+        if (payload.eventType === 'DELETE') {
+          updateMemberNoteRef.current(memberId, { note: '', is_reserved: false, archive_remark: '' });
+        } else {
+          updateMemberNoteRef.current(memberId, payload.new as Record<string, any>);
+        }
       })
       .subscribe((status) => { console.log('Member notes subscription status:', status); });
 

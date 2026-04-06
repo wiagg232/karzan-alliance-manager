@@ -9,7 +9,7 @@
 **主要依賴**
 - `supabase` — 資料庫讀寫與 Realtime 訂閱
 - `AppContext (useAppContext)` — 全域 db、userRole、userGuildRoles、updateMember、fetchAllMembers
-- `useGhostRecords` — 幽靈成員紀錄管理
+- `useGhostRecords` — 幽靈成員紀錄管理（`ghostRecords`, `fetchGhostRecordsForMember`, `handleAddGhostRecord`, `handleDeleteGhostRecord`）
 - `react-router-dom` — 導航至 /raid、/team
 
 ---
@@ -66,7 +66,7 @@ interface GuildRaidRecord {
 
 ## Hooks
 
-### `useRaidData(fetchAllMembers)`
+### `useRaidData(fetchAllMembers, updateMemberNote)`
 `src/features/raid/hooks/useRaidData.ts`
 
 管理所有遠端資料狀態與 Realtime 訂閱。
@@ -95,7 +95,8 @@ interface GuildRaidRecord {
 | `member_raid_records_{seasonId}` | member_raid_records | INSERT/UPDATE | 更新 records + 閃爍 |
 | | | DELETE | 移除 records 對應項目 |
 | `guild_raid_records_{seasonId}` | guild_raid_records | INSERT/UPDATE | 更新 guildRaidRecords |
-| `member_notes_all` | member_notes | 任何 | fetchAllMembers + 閃爍 |
+| `member_notes_all` | member_notes | INSERT/UPDATE | updateMemberNote（增量更新單一成員）+ 閃爍 |
+| | | DELETE | updateMemberNote（清除 note/isReserved/archiveRemark）+ 閃爍 |
 
 ---
 
@@ -208,7 +209,8 @@ GuildRaidManager
 ```
 
 **Props 傳遞重點**
-- `GuildRaidTable.onBlur` → `editor.handleAutoSave(memberId, guildId)`
+- `GuildRaidTable.onBlur: (memberId, guildId) => void` → 直接傳 `editor.handleAutoSave`（useCallback 穩定引用）
+- `GuildRaidTable.onFetchGhostRecords` → `fetchGhostRecordsForMember`（modal 打開時懶載入，已拉過不重複請求）
 - `GuildRaidTable` 接收 `rowHeights / headerHeight / theadHeight` 及 onChange callback，實現跨表格行高同步
 
 ---

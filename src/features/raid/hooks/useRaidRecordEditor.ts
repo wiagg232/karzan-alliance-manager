@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
 import type { MemberRaidRecord, GuildRaidRecord } from '../types';
@@ -30,14 +30,30 @@ export function useRaidRecordEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Mutable refs for stable callbacks — updated on every render
+  const draftRecordsRef = useRef(draftRecords);
+  draftRecordsRef.current = draftRecords;
+  const dbMembersRef = useRef(db.members);
+  dbMembersRef.current = db.members;
+  const guildRaidRecordsRef = useRef(guildRaidRecords);
+  guildRaidRecordsRef.current = guildRaidRecords;
+
+  // Per-member debounce timers for auto-save (300 ms)
+  const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
   // Clear drafts when switching season or comparison mode
   useEffect(() => {
-    if (Object.keys(draftRecords).length > 0) setDraftRecords({});
+    if (Object.keys(draftRecordsRef.current).length > 0) setDraftRecords({});
   }, [selectedSeasonId, isComparisonMode]);
 
-  const handleRecordChange = (memberId: string, field: 'score' | 'note' | 'season_note', value: string | number) => {
+  // Clear all pending save timers on unmount
+  useEffect(() => {
+    return () => { Object.values(saveTimersRef.current).forEach(clearTimeout); };
+  }, []);
+
+  const handleRecordChange = useCallback((memberId: string, field: 'score' | 'note' | 'season_note', value: string | number) => {
     setDraftRecords(prev => {
-      const existingRecord = prev[memberId] || records[memberId] || {
+      const existingRecord = prev[memberId] || recordsRef.current[memberId] || {
         season_id: selectedSeasonId,
         member_id: memberId,
         score: 0,
@@ -53,16 +69,16 @@ export function useRaidRecordEditor({
         ...prev,
         [memberId]: {
           ...existingRecord,
-          note: prev[memberId]?.note ?? db.members[memberId]?.note ?? '',
+          note: prev[memberId]?.note ?? dbMembersRef.current[memberId]?.note ?? '',
           [field]: finalValue,
         },
       };
     });
-  };
+  }, [selectedSeasonId]); // recordsRef/dbMembersRef are stable refs
 
-  const updateGuildMedian = async (guildId: string, customRecords?: Record<string, MemberRaidRecord>) => {
-    const currentRecords = customRecords || records;
-    const guildMembers = Object.values(db.members).filter(m => {
+  const updateGuildMedian = useCallback(async (guildId: string, customRecords?: Record<string, MemberRaidRecord>) => {
+    const currentRecords = customRecords || recordsRef.current;
+    const guildMembers = Object.values(dbMembersRef.current).filter(m => {
       if (isSelectedSeasonArchived) {
         return currentRecords[m.id!]?.season_guild === guildId;
       }
@@ -78,7 +94,7 @@ export function useRaidRecordEditor({
     }
 
     const guildRecord: GuildRaidRecord = {
-      ...guildRaidRecords[guildId],
+      ...guildRaidRecordsRef.current[guildId],
       season_id: selectedSeasonId,
       guild_id: guildId,
       member_score_median: Math.floor(median),
@@ -91,14 +107,14 @@ export function useRaidRecordEditor({
     if (error) throw error;
 
     setGuildRaidRecords(prev => ({ ...prev, [guildId]: guildRecord }));
-  };
+  }, [isSelectedSeasonArchived, selectedSeasonId]); // recordsRef/dbMembersRef/guildRaidRecordsRef are stable refs
 
-  const handleAutoSave = async (memberId: string, guildId: string) => {
-    const draft = draftRecords[memberId];
+  const doAutoSave = useCallback(async (memberId: string, guildId: string) => {
+    const draft = draftRecordsRef.current[memberId];
     if (!draft) return;
 
-    const originalRecord = records[memberId];
-    const originalNote = db.members[memberId]?.note || '';
+    const originalRecord = recordsRef.current[memberId];
+    const originalNote = dbMembersRef.current[memberId]?.note || '';
 
     const scoreChanged = draft.score !== (originalRecord?.score ?? 0);
     const seasonNoteChanged = (draft.season_note || '') !== (originalRecord?.season_note || '');
@@ -133,9 +149,17 @@ export function useRaidRecordEditor({
     } finally {
       setSaving(false);
     }
-  };
+  }, [updateMember, updateGuildMedian]); // draftRecordsRef/recordsRef/dbMembersRef are stable refs
 
-  const handleGuildNoteChange = async (guildId: string, note: string) => {
+  const handleAutoSave = useCallback((memberId: string, guildId: string) => {
+    clearTimeout(saveTimersRef.current[memberId]);
+    saveTimersRef.current[memberId] = setTimeout(() => {
+      delete saveTimersRef.current[memberId];
+      doAutoSave(memberId, guildId);
+    }, 300);
+  }, [doAutoSave]);
+
+  const handleGuildNoteChange = useCallback(async (guildId: string, note: string) => {
     if (!selectedSeasonId) return;
     try {
       const { error } = await supabase
@@ -152,7 +176,7 @@ export function useRaidRecordEditor({
       console.error('Error updating guild note:', err);
       setError(err.message);
     }
-  };
+  }, [selectedSeasonId]);
 
   return {
     draftRecords,
