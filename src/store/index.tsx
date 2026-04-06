@@ -555,10 +555,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const maxSeasonId = seasonData?.[0]?.id || null;
 
-    // Now fetch all members, then filter member_raid_records in JavaScript
-    const { data, error } = await supabase
+    // Fetch members and the latest season's raid records in parallel.
+    // Splitting into two queries avoids a full cross-join of members × all seasons
+    // which was causing statement timeouts on large datasets.
+    const membersQuery = supabase
       .from('members')
-      .select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, member_notes(note, is_reserved, archive_remark), member_raid_records(id, season_id, score, season_note)');
+      .select('id, name, guild_id, role, records, exclusive_weapons, color, total_score, updated_at, status, member_notes(note, is_reserved, archive_remark)');
+
+    const raidRecordsQuery = maxSeasonId
+      ? supabase
+          .from('member_raid_records')
+          .select('member_id, score, season_note')
+          .eq('season_id', maxSeasonId)
+      : Promise.resolve({ data: [] as any[], error: null });
+
+    const [{ data, error }, { data: raidRecordsData, error: raidRecordsError }] = await Promise.all([
+      membersQuery,
+      raidRecordsQuery,
+    ]);
 
     if (error) {
       console.error("Error fetching all members:", error);
