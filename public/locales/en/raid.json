@@ -17,6 +17,7 @@
     "start_download": "Start Download Image",
     "generating": "Generating...",
     "include_score": "Include Score",
+    "hide_latest_season": "Hide Latest Season",
     "no_records": "No season records available.",
     "export_failed": "Failed to generate image",
     "history_title": "Alliance Raid History",

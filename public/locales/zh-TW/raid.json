@@ -17,6 +17,7 @@
     "start_download": "開始下載圖片",
     "generating": "生成中...",
     "include_score": "包含分數",
+    "hide_latest_season": "隱藏最新賽季",
     "no_records": "目前沒有任何賽季記錄。",
     "export_failed": "生成圖片失敗",
     "history_title": "聯盟成績歷史",

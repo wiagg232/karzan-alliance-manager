@@ -47,6 +47,7 @@ export default function AllianceRaidRecord() {
   const [downloadConfig, setDownloadConfig] = useState<{ singleSeasonId: string }>({ singleSeasonId: '' });
   const [includeScore, setIncludeScore] = useState(false);
   const [showScoreInTable, setShowScoreInTable] = useState(true);
+  const [hideLatestSeason, setHideLatestSeason] = useState(false);
 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -205,6 +206,8 @@ export default function AllianceRaidRecord() {
       });
   }, [db.guilds]);
 
+  const visibleSeasons = hideLatestSeason && seasons.length > 0 ? seasons.slice(1) : seasons;
+
   const getRecord = useMemo(() => (guild_id: string | undefined, season_id: string) => {
     if (!guild_id) return undefined;
     return records.find(r => r.guild_id === guild_id && r.season_id === season_id);
@@ -292,6 +295,26 @@ export default function AllianceRaidRecord() {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
+                {t('alliance_raid.hide_latest_season', '隱藏最新賽季')}
+              </span>
+              <button
+                onClick={() => setHideLatestSeason(!hideLatestSeason)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                  hideLatestSeason ? 'bg-amber-600' : 'bg-stone-300 dark:bg-stone-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    hideLatestSeason ? 'translate-x-[18px]' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="h-6 w-px bg-stone-300 dark:bg-stone-700 mx-1"></div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
                 {t('alliance_raid.show_score', '顯示分數')}
               </span>
               <button
@@ -362,7 +385,7 @@ export default function AllianceRaidRecord() {
                     <th className="sticky left-12 z-20 bg-stone-100 dark:bg-stone-800 p-2 border-b border-r border-stone-200 dark:border-stone-700 font-bold text-stone-700 dark:text-stone-300 w-24 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-xs">
                       {/* 公會名稱 */}
                     </th>
-                    {seasons.map(season => (
+                    {visibleSeasons.map(season => (
                       <th key={season.id} className="p-2 border-b border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 w-[110px] min-w-[110px] max-w-[110px] align-top relative group">
                         <div className="flex flex-col gap-0.5">
                           <div className="font-bold text-stone-800 dark:text-stone-200 text-xs leading-tight">
@@ -416,7 +439,7 @@ export default function AllianceRaidRecord() {
                         <td className={`sticky left-12 z-10 py-1 px-2 border-r border-stone-200 dark:border-stone-700 font-medium shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] text-xs w-24 truncate ${guildColBg} ${textClasses}`}>
                           {guild.name}
                         </td>
-                        {seasons.map(season => {
+                        {visibleSeasons.map(season => {
                           const record = getRecord(guild.id, season.id);
                           const isEditing = editingCell?.guild_id === guild.id && editingCell?.season_id === season.id;
 
