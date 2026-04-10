@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '@/store';
-import { Shield, Sword, Wand2, Archive, Settings, AlertCircle, Lock, Link as LinkIcon, Activity, Users } from 'lucide-react';
+import { Shield, Sword, Wand2, Archive, Settings, Lock, Activity, Users } from 'lucide-react';
 import { TabButton } from '../components/TabButton';
 import ArchivedMembersManager from '../components/ArchivedMembersManager';
 import AccessControlManager from '../components/AccessControlManager';

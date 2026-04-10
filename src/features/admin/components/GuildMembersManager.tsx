@@ -4,12 +4,9 @@ import { ChevronLeft, Plus, Save, X, Edit2, Archive, Trash2, AlertCircle } from 
 import ConfirmModal from '@shared/ui/ConfirmModal';
 import { Role } from '@/entities/member/types';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '@/shared/api/supabase';
-
 export default function GuildMembersManager({ guildId, onBack }: { guildId: string, onBack: () => void }) {
   const { t } = useTranslation(['admin', 'translation']);
   const { db, addMember, deleteMember, updateMember, fetchMembers, archiveMember, showToast: showGlobalToast } = useAppContext();
-  const [selectedGuildId, setSelectedGuildId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isBatchAdding, setIsBatchAdding] = useState(false);
   const [batchInput, setBatchInput] = useState('');
@@ -19,7 +16,7 @@ export default function GuildMembersManager({ guildId, onBack }: { guildId: stri
     name: '',
     role: 'member',
     note: '',
-    targetGuildId: db.guilds[guildId]?.id
+    targetGuildId: guildId
   });
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,

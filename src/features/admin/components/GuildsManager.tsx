@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '@/store';
-import { Plus, Edit2, Trash2, Save, X, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, RefreshCw } from 'lucide-react';
 import ConfirmModal from '@shared/ui/ConfirmModal';
 import { getTierColor, getTierBorderHoverClass } from '@/shared/lib/utils';
 import { useTranslation } from 'react-i18next';
