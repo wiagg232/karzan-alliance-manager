@@ -233,7 +233,7 @@ function GuildRaidTable({
                   </div>
                 </th>
                 <th 
-                  className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-600 w-24"
+                  className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-600 w-[72px]"
                   onClick={() => onSort('score')}
                 >
                   <div className="flex items-center gap-1">
@@ -246,7 +246,7 @@ function GuildRaidTable({
                   </div>
                 </th>
                 {!isComparisonMode && (
-                  <th className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 w-32">
+                  <th className="p-3 text-xs font-semibold text-stone-600 dark:text-stone-300 border-b border-stone-200 dark:border-stone-600 w-[173px]">
                     {t('raid.column_deduction', '推算')}
                   </th>
                 )}
@@ -283,7 +283,7 @@ function GuildRaidTable({
                           className="flex items-center gap-2 text-xs font-medium text-stone-800 dark:text-stone-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-left"
                         >
                           <Search className="w-3.5 h-3.5 text-stone-400" />
-                          <span className="truncate max-w-[120px]">{member.name}</span>
+                          <span className="truncate max-w-[160px]">{member.name}</span>
                         </button>
                         <button
                           onClick={(e) => handleCopyName(e, member.name, member.id!)}
@@ -338,7 +338,7 @@ function GuildRaidTable({
                     {!isComparisonMode && (
                       <td className="py-0.5 px-2">
                         <div className="px-2 py-0.5 text-xs font-medium text-stone-800 dark:text-stone-200 whitespace-pre-line leading-tight">
-                          {deduceScore(record.score || 0, t, evenRounds)}
+                          {deduceScore(record.score || 0, t, evenRounds, parseInt(seasonId) <= 7)}
                         </div>
                       </td>
                     )}
