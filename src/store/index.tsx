@@ -181,7 +181,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (error || !session?.user) return;
 
       const user = session.user;
-      
+
       if (user.app_metadata?.provider !== 'discord') {
         // Handle email/password admin login
         const { data: existingProfile, error: profileError } = await supabase
@@ -251,7 +251,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .select('id, user_role, user_guilds, display_name, avatar_url')
           .eq('discord_id', discordId)
           .maybeSingle();
-          
+
         existingProfile = syncedProfile;
       }
 
@@ -264,7 +264,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         // 如果同步後還是沒有 profile，代表他不在公會內，或是發生了其他錯誤
         console.warn('Unauthorized login attempt: User not in guild or profile missing.');
-        
+
         // 寫入系統日誌
         await supabase.from('system_logs').insert({
           level: 'warn',
@@ -283,7 +283,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setuserGuildRolesState([]);
         setCurrentAvatarState(null);
         setUserProfileId(null);
-        
+
         // 延遲一點點顯示 Toast，確保畫面已經準備好
         setTimeout(() => {
           showToast(t('not_in_guild'), 'error');
@@ -496,7 +496,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newMembers = data.reduce((acc, member) => {
       const camelMember = toCamel<any>(member);
       const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
-      
+
       // Filter member_raid_records to only include records for the max season ID
       const allRaidRecords = Array.isArray(camelMember.memberRaidRecords) ? camelMember.memberRaidRecords : [];
       const filteredRaidRecords = maxSeasonId
@@ -564,9 +564,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const raidRecordsQuery = maxSeasonId
       ? supabase
-          .from('member_raid_records')
-          .select('member_id, score, season_note')
-          .eq('season_id', maxSeasonId)
+        .from('member_raid_records')
+        .select('member_id, score, season_note')
+        .eq('season_id', maxSeasonId)
       : Promise.resolve({ data: [] as any[], error: null });
 
     const [{ data, error }, { data: raidRecordsData, error: raidRecordsError }] = await Promise.all([
@@ -599,21 +599,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
+    const raidRecordsByMemberId = (raidRecordsData || []).reduce((acc, record) => ({ ...acc, [record.member_id]: record }), {});
+
     const allMembers: Record<string, Member> = data.reduce((acc, member) => {
       const camelMember = toCamel<any>(member);
       const memberNotes = Array.isArray(camelMember.memberNotes) ? camelMember.memberNotes[0] : camelMember.memberNotes;
       // Filter member_raid_records to only include records for the max season ID
-      const allRaidRecords = Array.isArray(camelMember.memberRaidRecords) ? camelMember.memberRaidRecords : [];
-      const filteredRaidRecords = maxSeasonId
-        ? allRaidRecords.filter((r: any) => r.season_id === maxSeasonId)
-        : []; // If no max season, return empty array (will result in score=0, seasonNote="")
-      const memberRaidRecords = filteredRaidRecords[0];
+
+      const memberRaidRecord = raidRecordsByMemberId[camelMember.id];
       // member_notes keys are in snake_case since toCamel uses { deep: false }
       const note = memberNotes?.note || '';
       const isReserved = memberNotes?.is_reserved || false;
       const archiveRemark = memberNotes?.archive_remark || '';
-      const seasonNote = memberRaidRecords?.seasonNote || memberRaidRecords?.season_note || '';
-      const score = memberRaidRecords?.score ?? 0;
+      const seasonNote = memberRaidRecord?.season_note || '';
+      const score = memberRaidRecord?.score ?? 0;
       const mappedMember: Member = {
         ...camelMember,
         note,
