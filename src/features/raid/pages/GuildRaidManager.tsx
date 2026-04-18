@@ -86,7 +86,7 @@ export default function GuildRaidManager() {
 
   const layout = useTableLayout(raidData.selectedSeasonId, isComparisonMode, sortConfig);
 
-  // Fetch next season records when current season is archived
+  // Fetch next season records when current season is archived (regardless of next season status)
   useEffect(() => {
     if (!raidData.isSelectedSeasonArchived || !raidData.selectedSeason) {
       setNextSeasonRecords({});
@@ -96,7 +96,7 @@ export default function GuildRaidManager() {
     const fetchNextSeasonRecords = async () => {
       // Get next season number
       const currentSeasonNum = raidData.selectedSeason?.season_number;
-      if (!currentSeasonNum) {
+      if (!currentSeasonNum && currentSeasonNum !== 0) {
         setNextSeasonRecords({});
         return;
       }
@@ -124,7 +124,7 @@ export default function GuildRaidManager() {
           nextSeason = seasonData;
         }
 
-        // Now fetch the records for next season
+        // Now fetch the records for next season (archived or not)
         const { data, error } = await supabase
           .from('member_raid_records')
           .select('*')
