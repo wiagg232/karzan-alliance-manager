@@ -14,8 +14,8 @@ const buildGroupText = (listName: string, members: GuildMoveSummary['members']) 
     if (member.action === 'kick') {
       return `${member.name} (踢出)`;
     }
-    return `${member.name} (${member.toGuild || member.fromGuild})`;
-  }).join(' ');
+    return `${member.name} (從 ${member.fromGuild} 到 ${member.toGuild})`;
+  }).join('\n');
 
   return `# ${listName}\n${membersText}\n請 {會長} {副會長} 今天送出他們`;
 };
@@ -33,7 +33,7 @@ const MemberMoveAnnounceTab: React.FC<MemberMoveAnnounceTabProps> = ({ moveSumma
       const actionLabel = summary.action === 'kick' ? '送出名單' : '招收名單';
       const listName = `${summary.guildName} - ${actionLabel}`;
       return {
-        guildName: listName,
+        listName,
         members: summary.members.map(m => ({
           id: m.memberId,
           name: m.name,
@@ -202,8 +202,8 @@ const MemberMoveAnnounceTab: React.FC<MemberMoveAnnounceTabProps> = ({ moveSumma
                 <div className="font-bold text-stone-800 dark:text-stone-200">{summary.guildName}</div>
                 <div
                   className={`text-xs font-bold px-2 py-1 rounded-full ${summary.action === 'kick'
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                      : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                     }`}
                 >
                   {summary.action === 'kick' ? '踢出' : '招收'}

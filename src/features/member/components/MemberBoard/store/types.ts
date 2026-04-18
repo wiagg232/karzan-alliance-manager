@@ -18,7 +18,7 @@ export type MemberMovePayloadItem = {
 };
 
 export type MemberMovePayload = {
-    guildName: string;
+    listName: string;
     members: MemberMovePayloadItem[];
     archiveReason?: string;
 };
