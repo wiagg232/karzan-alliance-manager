@@ -53,13 +53,14 @@ export function useMemberMoveAnnounce(
 
       if (!archivedRecord && nextRecord) {
         // New member in next season (recruit)
-        if (!member) return;
+        // Use member from members array if available, otherwise use member_id from record
+        const memberName = member?.name || nextRecord.member_id || '未知成員';
         const toGuild = guildMap.get(nextRecord.season_guild);
         if (!toGuild) return;
 
         memberMoves.set(memberId, {
           memberId,
-          name: member.name,
+          name: memberName,
           fromGuild: '',
           toGuild: toGuild.name || '未知公會',
           action: 'move'
@@ -79,7 +80,8 @@ export function useMemberMoveAnnounce(
       } else if (archivedRecord && nextRecord) {
         // Member exists in both seasons - check if guild changed
         if (archivedRecord.season_guild !== nextRecord.season_guild) {
-          if (!member) return;
+          // Use member from members array if available, otherwise use member_id from record
+          const memberName = member?.name || nextRecord.member_id || archivedRecord.member_id || '未知成員';
           const fromGuild = guildMap.get(archivedRecord.season_guild);
           const toGuild = guildMap.get(nextRecord.season_guild);
 
@@ -87,7 +89,7 @@ export function useMemberMoveAnnounce(
 
           memberMoves.set(memberId, {
             memberId,
-            name: member.name,
+            name: memberName,
             fromGuild: fromGuild.name || '未知公會',
             toGuild: toGuild.name || '未知公會',
             action: 'move'
