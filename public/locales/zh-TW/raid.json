@@ -58,6 +58,7 @@
     "tab_add_season": "新增賽季",
     "tab_archive_season": "封存賽季",
     "tab_delete_records": "刪除記錄",
+    "tab_member_moves": "成員變動名冊",
     "delete_records_confirm_title": "確認刪除記錄？",
     "delete_records_confirm_desc": "此操作將會永久刪除所選的數據，無法復原。",
     "danger_zone_title": "危險操作",

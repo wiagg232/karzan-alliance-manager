@@ -237,6 +237,9 @@ export default function GuildRaidManager() {
           archiving={seasonManager.archiving}
           isDeleting={seasonManager.isDeleting}
           isSelectedSeasonArchived={raidData.isSelectedSeasonArchived}
+          members={Object.values(db.members)}
+          guilds={Object.values(db.guilds)}
+          records={raidData.records}
         />
 
         {error && (

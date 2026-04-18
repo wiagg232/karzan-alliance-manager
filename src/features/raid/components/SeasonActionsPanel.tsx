@@ -1,12 +1,16 @@
 import React from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import MemberMoveAnnounceTab from './MemberMoveAnnounceTab';
+import { useMemberMoveAnnounce } from '../hooks/useMemberMoveAnnounce';
+import type { Member, Guild } from '@entities/member/types';
+import type { MemberRaidRecord } from '../types';
 
 interface ManagerActionsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'add' | 'archive' | 'delete';
-  onTabChange: (tab: 'add' | 'archive' | 'delete') => void;
+  activeTab: 'add' | 'archive' | 'delete' | 'memberMove';
+  onTabChange: (tab: 'add' | 'archive' | 'delete' | 'memberMove') => void;
   newSeason: { season_number: number; period_text: string; description: string; even_rounds: boolean };
   setNewSeason: React.Dispatch<React.SetStateAction<{ season_number: number; period_text: string; description: string; even_rounds: boolean }>>;
   keepScores: boolean;
@@ -20,6 +24,9 @@ interface ManagerActionsModalProps {
   archiving: boolean;
   isDeleting: boolean;
   isSelectedSeasonArchived: boolean;
+  members?: Member[];
+  guilds?: Guild[];
+  records?: Record<string, MemberRaidRecord>;
 }
 
 const SeasonActionsPanel: React.FC<ManagerActionsModalProps> = ({
@@ -40,9 +47,20 @@ const SeasonActionsPanel: React.FC<ManagerActionsModalProps> = ({
   archiving,
   isDeleting,
   isSelectedSeasonArchived,
+  members = [],
+  guilds = [],
+  records = {},
 }) => {
   const { t } = useTranslation(['raid', 'translation']);
   const [confirmType, setConfirmType] = React.useState<'archive' | 'delete_score' | 'delete_note' | null>(null);
+
+  const { moveSummaries, loading: movesLoading } = useMemberMoveAnnounce(
+    activeTab === 'memberMove' ? 'archived' : null,
+    records,
+    members,
+    guilds,
+    isSelectedSeasonArchived
+  );
 
   if (!isOpen) return null;
 
@@ -75,13 +93,13 @@ const SeasonActionsPanel: React.FC<ManagerActionsModalProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-stone-200 dark:border-stone-700">
+      <div className="flex border-b border-stone-200 dark:border-stone-700 overflow-x-auto">
         <button
           onClick={() => {
             setConfirmType(null);
             onTabChange('add');
           }}
-          className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
+          className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
             activeTab === 'add'
               ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
               : 'border-transparent text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
@@ -94,7 +112,7 @@ const SeasonActionsPanel: React.FC<ManagerActionsModalProps> = ({
             setConfirmType(null);
             onTabChange('archive');
           }}
-          className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
+          className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
             activeTab === 'archive'
               ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
               : 'border-transparent text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
@@ -107,7 +125,7 @@ const SeasonActionsPanel: React.FC<ManagerActionsModalProps> = ({
             setConfirmType(null);
             onTabChange('delete');
           }}
-          className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
+          className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
             activeTab === 'delete'
               ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
               : 'border-transparent text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
@@ -115,6 +133,21 @@ const SeasonActionsPanel: React.FC<ManagerActionsModalProps> = ({
         >
           {t('raid.tab_delete_records', '刪除記錄')}
         </button>
+        {isSelectedSeasonArchived && (
+          <button
+            onClick={() => {
+              setConfirmType(null);
+              onTabChange('memberMove');
+            }}
+            className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'memberMove'
+                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
+            }`}
+          >
+            {t('raid.tab_member_moves', '成員變動名冊')}
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -344,6 +377,13 @@ const SeasonActionsPanel: React.FC<ManagerActionsModalProps> = ({
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'memberMove' && isSelectedSeasonArchived && (
+              <MemberMoveAnnounceTab
+                moveSummaries={moveSummaries}
+                isLoading={movesLoading}
+              />
             )}
           </>
         )}

@@ -58,6 +58,7 @@
     "tab_add_season": "Add Season",
     "tab_archive_season": "Archive Season",
     "tab_delete_records": "Delete Records",
+    "tab_member_moves": "Member Movement Roster",
     "delete_records_confirm_title": "Confirm delete records?",
     "delete_records_confirm_desc": "This action will permanently delete the selected data and cannot be undone.",
     "danger_zone_title": "Danger Zone",
@@ -71,8 +72,7 @@
     "guild_note_placeholder": "Guild note...",
     "button_team_assign": "Team Assignment",
     "keep_scores_label": "Keep scores",
-    "keep_season_notes_label": "Keep season notes"
-    ,
+    "keep_season_notes_label": "Keep season notes",
     "guild_selection_title": "Select Guild",
     "guild_selection_copy_title": "Copy missing members by guild",
     "guild_selection_copy": "Copy missing members",

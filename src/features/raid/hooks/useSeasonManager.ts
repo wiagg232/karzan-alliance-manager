@@ -32,7 +32,7 @@ export function useSeasonManager({
   const [error, setError] = useState('');
 
   const [isSeasonPanelOpen, setIsSeasonPanelOpen] = useState(false);
-  const [activeSeasonTab, setActiveSeasonTab] = useState<'add' | 'archive' | 'delete'>('add');
+  const [activeSeasonTab, setActiveSeasonTab] = useState<'add' | 'archive' | 'delete' | 'memberMove'>('add');
   const [newSeason, setNewSeason] = useState({ season_number: 1, period_text: '', description: '', even_rounds: false });
   const [keepScores, setKeepScores] = useState(true);
   const [keepSeasonNotes, setKeepSeasonNotes] = useState(false);
