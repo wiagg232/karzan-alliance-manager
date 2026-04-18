@@ -33,67 +33,119 @@ export function useMemberMoveAnnounce(
       return;
     }
 
-    // Create maps for faster lookup
     const guildMap = new Map<string, Guild>(guilds.map(g => [g.id!, g]));
-
-    // Track member movements and removals
     const memberMoves: Map<string, MemberMoveItem> = new Map();
 
-    // Get all member IDs from both seasons
+    const isNextSeasonEmpty = Object.keys(nextSeasonRecords).length === 0;
+    const useCurrentGuildAsNext = isNextSeasonEmpty;
+
+    const memberCurrentGuildMap = new Map<string, string>();
+    members.forEach(m => {
+      if (m.id && m.guildId) {
+        memberCurrentGuildMap.set(m.id, m.guildId);
+      }
+    });
+
     const allMemberIds = new Set([
       ...Object.keys(archivedSeasonRecords),
-      ...Object.keys(nextSeasonRecords)
+      ...(useCurrentGuildAsNext ? memberCurrentGuildMap.keys() : Object.keys(nextSeasonRecords))
     ]);
 
-    // Compare archived season with next season
+    console.log('Member move announce data:', {
+      archivedRecordsCount: Object.keys(archivedSeasonRecords).length,
+      nextRecordsCount: Object.keys(nextSeasonRecords).length,
+      isNextSeasonEmpty,
+      useCurrentGuildAsNext,
+      sampleArchivedRecord: Object.values(archivedSeasonRecords)[0],
+      sampleNextRecord: Object.values(nextSeasonRecords)[0],
+    });
+
     allMemberIds.forEach(memberId => {
       const archivedRecord = archivedSeasonRecords[memberId];
       const nextRecord = nextSeasonRecords[memberId];
       const member = members.find(m => m.id === memberId);
+      const currentGuildId = memberCurrentGuildMap.get(memberId);
 
-      if (!archivedRecord && nextRecord) {
-        // New member in next season (recruit)
-        // Use member from members array if available, otherwise use member_id from record
-        const memberName = member?.name || nextRecord.member_id || '未知成員';
-        const toGuild = guildMap.get(nextRecord.season_guild);
-        if (!toGuild) return;
+      if (useCurrentGuildAsNext) {
+        if (!archivedRecord && currentGuildId) {
+          const toGuild = guildMap.get(currentGuildId);
+          if (!toGuild) return;
 
-        memberMoves.set(memberId, {
-          memberId,
-          name: memberName,
-          fromGuild: '',
-          toGuild: toGuild.name || '未知公會',
-          action: 'move'
-        });
-      } else if (archivedRecord && !nextRecord) {
-        // Member removed in next season (kicked)
-        const fromGuild = guildMap.get(archivedRecord.season_guild);
-        if (!fromGuild) return;
+          memberMoves.set(memberId, {
+            memberId,
+            name: member?.name || memberId,
+            fromGuild: '',
+            toGuild: toGuild.name || '未知公會',
+            action: 'move'
+          });
+        } else if (archivedRecord && !currentGuildId) {
+          const fromGuild = guildMap.get(archivedRecord.season_guild!);
+          if (!fromGuild) return;
 
-        memberMoves.set(memberId, {
-          memberId,
-          name: member?.name || archivedRecord.member_id || '未知成員',
-          fromGuild: fromGuild.name || '未知公會',
-          toGuild: '',
-          action: 'kick'
-        });
-      } else if (archivedRecord && nextRecord) {
-        // Member exists in both seasons - check if guild changed
-        if (archivedRecord.season_guild !== nextRecord.season_guild) {
-          // Use member from members array if available, otherwise use member_id from record
-          const memberName = member?.name || nextRecord.member_id || archivedRecord.member_id || '未知成員';
-          const fromGuild = guildMap.get(archivedRecord.season_guild);
-          const toGuild = guildMap.get(nextRecord.season_guild);
+          memberMoves.set(memberId, {
+            memberId,
+            name: member?.name || archivedRecord.member_id || '未知成員',
+            fromGuild: fromGuild.name || '未知公會',
+            toGuild: '',
+            action: 'kick'
+          });
+        } else if (archivedRecord && currentGuildId) {
+          if (archivedRecord.season_guild !== currentGuildId) {
+            const memberName = member?.name || archivedRecord.member_id || '未知成員';
+            const fromGuild = guildMap.get(archivedRecord.season_guild!);
+            const toGuild = guildMap.get(currentGuildId);
 
-          if (!fromGuild || !toGuild) return;
+            if (!fromGuild || !toGuild) return;
+
+            memberMoves.set(memberId, {
+              memberId,
+              name: memberName,
+              fromGuild: fromGuild.name || '未知公會',
+              toGuild: toGuild.name || '未知公會',
+              action: 'move'
+            });
+          }
+        }
+      } else {
+        if (!archivedRecord && nextRecord) {
+          const memberName = member?.name || nextRecord.member_id || '未知成員';
+          const toGuild = guildMap.get(nextRecord.season_guild!);
+          if (!toGuild) return;
 
           memberMoves.set(memberId, {
             memberId,
             name: memberName,
-            fromGuild: fromGuild.name || '未知公會',
+            fromGuild: '',
             toGuild: toGuild.name || '未知公會',
             action: 'move'
           });
+        } else if (archivedRecord && !nextRecord) {
+          const fromGuild = guildMap.get(archivedRecord.season_guild!);
+          if (!fromGuild) return;
+
+          memberMoves.set(memberId, {
+            memberId,
+            name: member?.name || archivedRecord.member_id || '未知成員',
+            fromGuild: fromGuild.name || '未知公會',
+            toGuild: '',
+            action: 'kick'
+          });
+        } else if (archivedRecord && nextRecord) {
+          if (archivedRecord.season_guild !== nextRecord.season_guild) {
+            const memberName = member?.name || nextRecord.member_id || archivedRecord.member_id || '未知成員';
+            const fromGuild = guildMap.get(archivedRecord.season_guild!);
+            const toGuild = guildMap.get(nextRecord.season_guild!);
+
+            if (!fromGuild || !toGuild) return;
+
+            memberMoves.set(memberId, {
+              memberId,
+              name: memberName,
+              fromGuild: fromGuild.name || '未知公會',
+              toGuild: toGuild.name || '未知公會',
+              action: 'move'
+            });
+          }
         }
       }
     });

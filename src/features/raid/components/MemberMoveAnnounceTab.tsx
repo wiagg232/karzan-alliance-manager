@@ -14,7 +14,7 @@ const buildGroupText = (listName: string, members: GuildMoveSummary['members']) 
     if (member.action === 'kick') {
       return `${member.name} (踢出)`;
     }
-    return `${member.name} (從 ${member.fromGuild} 到 ${member.toGuild})`;
+    return `${member.name} (從 ${member.fromGuild || '申請者清單'} 到 ${member.toGuild})`;
   }).join('\n');
 
   return `# ${listName}\n${membersText}\n請 {會長} {副會長} 今天送出他們`;
