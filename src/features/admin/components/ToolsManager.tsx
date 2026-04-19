@@ -5,6 +5,7 @@ import AutoTransferTool from './tools/AutoTransferTool';
 import RemoveDuplicatesTool from './tools/RemoveDuplicatesTool';
 import CsvTool from './tools/CsvTool';
 import BackupRestoreTool from './tools/BackupRestoreTool';
+import DiscordSyncTool from './tools/DiscordSyncTool';
 
 export default function ToolsManager() {
   const { t } = useTranslation(['admin', 'translation']);
@@ -17,9 +18,10 @@ export default function ToolsManager() {
           <Wand2 className="w-6 h-6 text-amber-600" />
           {t('nav.tools')}
         </h2>
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AutoTransferTool isProcessing={isProcessing} setIsProcessing={setIsProcessing} />
           <RemoveDuplicatesTool isProcessing={isProcessing} setIsProcessing={setIsProcessing} />
+          <DiscordSyncTool isProcessing={isProcessing} setIsProcessing={setIsProcessing} />
         </div>
       </section>
 

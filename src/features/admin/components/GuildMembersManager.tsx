@@ -42,7 +42,7 @@ export default function GuildMembersManager({ guildId, onBack }: { guildId: stri
 
   const closeConfirmModal = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
   const closeArchiveModal = () => setArchiveModal(prev => ({ ...prev, isOpen: false }));
-  
+
   const appendArchiveReason = (text: string) => {
     setArchiveModal(prev => ({
       ...prev,
