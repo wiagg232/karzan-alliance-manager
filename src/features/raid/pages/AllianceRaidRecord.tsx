@@ -8,7 +8,7 @@ import { getTierColor } from '@/shared/lib/utils';
 import { toPng } from 'html-to-image';
 
 import AllianceRaidSeasonModal from '../components/AllianceRaidSeasonModal';
-import AllianceRaidDownloadModal from '../components/AllianceRaidDownloadModal';
+import AllianceRaidDownloadModal, { DownloadConfig } from '../components/AllianceRaidDownloadModal';
 import AllianceRaidExportView from '../components/AllianceRaidExportView';
 
 interface RaidSeason {
@@ -44,12 +44,11 @@ export default function AllianceRaidRecord() {
   const [newSeason, setNewSeason] = useState({ season_number: 1, period_text: '', description: '', even_rounds: false });
 
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-  const [downloadConfig, setDownloadConfig] = useState<{ singleSeasonId: string }>({ singleSeasonId: '' });
-  const [includeScore, setIncludeScore] = useState(false);
+  const [exportConfig, setExportConfig] = useState<DownloadConfig | null>(null);
   const [showScoreInTable, setShowScoreInTable] = useState(true);
   const [hideLatestSeason, setHideLatestSeason] = useState(false);
 
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [, setIsGeneratingImage] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
   const [editingCell, setEditingCell] = useState<{ guild_id: string, season_id: string } | null>(null);
@@ -82,11 +81,6 @@ export default function AllianceRaidRecord() {
     fetchRaidData();
   }, []);
 
-  useEffect(() => {
-    if (seasons.length > 0) {
-      setDownloadConfig({ singleSeasonId: seasons[0].id });
-    }
-  }, [seasons]);
 
   const handleSaveSeason = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,6 +202,23 @@ export default function AllianceRaidRecord() {
 
   const visibleSeasons = hideLatestSeason && seasons.length > 0 ? seasons.slice(1) : seasons;
 
+  const exportSeasonsForView = useMemo(() => {
+    if (!exportConfig) return [];
+    const fromSeason = seasons.find(s => s.id === exportConfig.seasonFrom);
+    const toSeason = seasons.find(s => s.id === exportConfig.seasonTo);
+    if (!fromSeason || !toSeason) return [];
+    const minNum = Math.min(fromSeason.season_number, toSeason.season_number);
+    const maxNum = Math.max(fromSeason.season_number, toSeason.season_number);
+    return seasons
+      .filter(s => s.season_number >= minNum && s.season_number <= maxNum)
+      .sort((a, b) => a.season_number - b.season_number);
+  }, [exportConfig, seasons]);
+
+  const exportGuildsForView = useMemo(() => {
+    if (!exportConfig) return [];
+    return sortedGuilds.filter(g => g.id && exportConfig.selectedGuildIds.has(g.id));
+  }, [exportConfig, sortedGuilds]);
+
   const getRecord = useMemo(() => (guild_id: string | undefined, season_id: string) => {
     if (!guild_id) return undefined;
     return records.find(r => r.guild_id === guild_id && r.season_id === season_id);
@@ -242,40 +253,29 @@ export default function AllianceRaidRecord() {
     scrollRef.current.scrollLeft = scrollLeft - walk;
   };
 
-  const handleDownloadImage = async () => {
-    if (!exportRef.current) return;
+  const handleDownloadFromModal = async (config: DownloadConfig) => {
+    setExportConfig(config);
+    setIsDownloadModalOpen(false);
     setIsGeneratingImage(true);
+    await new Promise(resolve => setTimeout(resolve, 200));
+    if (!exportRef.current) {
+      setIsGeneratingImage(false);
+      return;
+    }
     try {
-      // Small delay to ensure rendering
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const dataUrl = await toPng(exportRef.current, {
-        backgroundColor: '#1c1917', // stone-900
-        pixelRatio: 2,
-        skipFonts: true, // Fix for "can't access property 'trim', font is undefined"
-        style: {
-          transform: 'scale(1)',
-          transformOrigin: 'top left'
-        }
-      });
-
+      const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, skipFonts: true });
       const link = document.createElement('a');
-      link.download = `raid-record-${new Date().getTime()}.png`;
+      link.download = `raid-record-${Date.now()}.png`;
       link.href = dataUrl;
       link.click();
-      setIsDownloadModalOpen(false);
     } catch (err) {
       console.error('Error generating image:', err);
       setError(t('alliance_raid.export_failed'));
     } finally {
       setIsGeneratingImage(false);
+      setExportConfig(null);
     }
   };
-
-  const selectedSeasonsForExport = useMemo(() => {
-    const sorted = [...seasons].sort((a, b) => a.season_number - b.season_number);
-    return sorted.filter(s => s.id === downloadConfig.singleSeasonId);
-  }, [seasons, downloadConfig]);
 
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-900 flex flex-col">
@@ -537,20 +537,18 @@ export default function AllianceRaidRecord() {
         isOpen={isDownloadModalOpen}
         onClose={() => setIsDownloadModalOpen(false)}
         seasons={seasons}
-        downloadConfig={downloadConfig}
-        setDownloadConfig={setDownloadConfig}
-        includeScore={includeScore}
-        setIncludeScore={setIncludeScore}
-        isGeneratingImage={isGeneratingImage}
-        handleDownloadImage={handleDownloadImage}
+        guilds={sortedGuilds}
+        showScoreInTable={showScoreInTable}
+        hideLatestSeason={hideLatestSeason}
+        onDownload={handleDownloadFromModal}
       />
 
       <AllianceRaidExportView
         ref={exportRef}
-        selectedSeasonsForExport={selectedSeasonsForExport}
-        sortedGuilds={sortedGuilds}
+        selectedSeasonsForExport={exportSeasonsForView}
+        sortedGuilds={exportGuildsForView}
         getRecord={getRecord}
-        includeScore={includeScore}
+        includeScore={exportConfig?.includeScore ?? false}
       />
     </div>
   );
