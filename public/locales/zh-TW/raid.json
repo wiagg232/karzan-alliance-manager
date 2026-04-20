@@ -23,7 +23,14 @@
     "history_title": "聯盟成績歷史",
     "season_label": "賽季",
     "seasons_label": "賽季",
-    "generated_at": "生成於"
+    "generated_at": "生成於",
+    "download_modal_title": "下載成績記錄",
+    "download_modal_season_range": "賽季範圍",
+    "download_modal_show_score": "顯示分數",
+    "download_modal_select_guild": "選擇公會",
+    "download_modal_select_all": "全選 / 全不選",
+    "download_modal_selected_count": "已選 {{selected}} / {{total}} 個公會",
+    "download_png": "下載 PNG"
   },
   "raid": {
     "title_guild_manager": "公會聯合戰管理",

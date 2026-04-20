@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Download, BarChart3 } from 'lucide-react';
 
 interface RaidSeason {
@@ -46,6 +47,8 @@ export default function AllianceRaidDownloadModal({
   hideLatestSeason,
   onDownload,
 }: AllianceRaidDownloadModalProps) {
+  const { t } = useTranslation(['raid', 'translation']);
+
   const defaultSeasonId = useMemo(() => {
     if (seasons.length === 0) return '';
     if (hideLatestSeason && seasons.length > 1) return seasons[1].id;
@@ -82,11 +85,13 @@ export default function AllianceRaidDownloadModal({
     setSeasonFrom(defaultSeasonId);
     setSeasonTo(defaultSeasonId);
     setIncludeScore(showScoreInTable);
+    const tiers = Array.from(new Set(guilds.map(g => g.tier ?? 0)));
     const enabled: Record<number, boolean> = {};
-    tierNumbers.forEach(t => { enabled[t] = true; });
+    tiers.forEach(tier => { enabled[tier] = true; });
     setTierEnabled(enabled);
-    setSelectedGuildIds(new Set(allGuildIds));
-  }, [isOpen, defaultSeasonId, showScoreInTable, tierNumbers, allGuildIds]);
+    setSelectedGuildIds(new Set(guilds.map(g => g.id).filter(Boolean) as string[]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, defaultSeasonId, showScoreInTable]);
 
   const effectiveSelectedIds = useMemo(() => {
     return new Set(
@@ -136,7 +141,7 @@ export default function AllianceRaidDownloadModal({
         <div className="flex justify-between items-center px-5 py-4 border-b border-stone-700">
           <div className="flex items-center gap-2 text-lg font-bold text-stone-100">
             <Download className="w-[18px] h-[18px] text-amber-500" />
-            下載成績記錄
+            {t('alliance_raid.download_modal_title')}
           </div>
           <button
             onClick={onClose}
@@ -150,7 +155,7 @@ export default function AllianceRaidDownloadModal({
           {/* Season Range */}
           <div>
             <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-widest mb-2">
-              賽季範圍
+              {t('alliance_raid.download_modal_season_range')}
             </div>
             <div className="flex items-center gap-3">
               <select
@@ -183,7 +188,7 @@ export default function AllianceRaidDownloadModal({
           <div className="flex items-center justify-between px-3.5 py-3 bg-stone-900 border border-stone-600 rounded-xl">
             <div className="flex items-center gap-2 text-sm text-stone-300">
               <BarChart3 className="w-4 h-4 text-amber-500" />
-              顯示分數
+              {t('alliance_raid.download_modal_show_score')}
             </div>
             <button
               onClick={() => setIncludeScore(v => !v)}
@@ -203,13 +208,13 @@ export default function AllianceRaidDownloadModal({
           <div>
             <div className="flex justify-between items-center mb-2.5">
               <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-widest">
-                選擇公會
+                {t('alliance_raid.download_modal_select_guild')}
               </div>
               <button
                 onClick={toggleAll}
                 className="text-xs text-amber-500 hover:text-amber-400 px-1.5 py-0.5 rounded"
               >
-                全選 / 全不選
+                {t('alliance_raid.download_modal_select_all')}
               </button>
             </div>
             <div className="grid grid-cols-4 gap-2.5">
@@ -240,7 +245,7 @@ export default function AllianceRaidDownloadModal({
                     </div>
                     <div className="py-1.5">
                       {tierGuilds.map(g => {
-                        const id = g.id ?? '';
+                        const id = g.id ?? `noId-${g.name}`;
                         const checked = isOn && selectedGuildIds.has(id);
                         return (
                           <div
@@ -284,13 +289,13 @@ export default function AllianceRaidDownloadModal({
         {/* Footer */}
         <div className="flex items-center gap-2.5 px-5 py-4 border-t border-stone-700">
           <span className="text-xs text-stone-500 mr-auto">
-            已選 {selectedCount} / {totalCount} 個公會
+            {t('alliance_raid.download_modal_selected_count', { selected: selectedCount, total: totalCount })}
           </span>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-stone-800 border border-stone-600 rounded-xl text-stone-400 text-sm font-semibold hover:border-stone-500 transition-colors"
           >
-            取消
+            {t('common.cancel', '取消')}
           </button>
           <button
             onClick={() => onDownload({ seasonFrom, seasonTo, includeScore, selectedGuildIds: effectiveSelectedIds })}
@@ -298,7 +303,7 @@ export default function AllianceRaidDownloadModal({
             className="flex items-center gap-2 px-5 py-2 bg-amber-600 text-white rounded-xl text-sm font-bold hover:bg-amber-700 transition-colors disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
-            下載 PNG
+            {t('alliance_raid.download_png')}
           </button>
         </div>
       </div>

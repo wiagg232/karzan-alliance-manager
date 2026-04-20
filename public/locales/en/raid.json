@@ -23,7 +23,14 @@
     "history_title": "Alliance Raid History",
     "season_label": "Season",
     "seasons_label": "Seasons",
-    "generated_at": "Generated at"
+    "generated_at": "Generated at",
+    "download_modal_title": "Download Records",
+    "download_modal_season_range": "Season Range",
+    "download_modal_show_score": "Show Score",
+    "download_modal_select_guild": "Select Guilds",
+    "download_modal_select_all": "Select All / Deselect All",
+    "download_modal_selected_count": "Selected {{selected}} / {{total}} guilds",
+    "download_png": "Download PNG"
   },
   "raid": {
     "title_guild_manager": "Guild Raid Manager",
