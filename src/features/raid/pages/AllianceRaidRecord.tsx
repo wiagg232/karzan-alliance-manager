@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabase';
 import { useAppContext } from '@/store';
-import { Trophy, Download, Undo2, AlertCircle, Edit2, Save, X } from 'lucide-react';
+import { Trophy, Download, Undo2, AlertCircle, Edit2, Save, X, SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getTierColor } from '@/shared/lib/utils';
 import { toPng } from 'html-to-image';
 
 import AllianceRaidSeasonModal from '../components/AllianceRaidSeasonModal';
 import AllianceRaidDownloadModal, { DownloadConfig } from '../components/AllianceRaidDownloadModal';
+import AllianceRaidDisplayOptionsModal from '../components/AllianceRaidDisplayOptionsModal';
 import AllianceRaidExportView from '../components/AllianceRaidExportView';
 
 interface RaidSeason {
@@ -45,8 +46,10 @@ export default function AllianceRaidRecord() {
 
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [exportConfig, setExportConfig] = useState<DownloadConfig | null>(null);
-  const [showScoreInTable, setShowScoreInTable] = useState(true);
+  const [hideScoreInTable, setHideScoreInTable] = useState(false);
   const [hideLatestSeason, setHideLatestSeason] = useState(false);
+  const [isDisplayOptionsModalOpen, setIsDisplayOptionsModalOpen] = useState(false);
+  const [visibleGuildIds, setVisibleGuildIds] = useState<Set<string> | null>(null);
 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -200,18 +203,22 @@ export default function AllianceRaidRecord() {
       });
   }, [db.guilds]);
 
+  const displayedGuilds = useMemo(() => {
+    if (visibleGuildIds === null) return sortedGuilds;
+    return sortedGuilds.filter(g => g.id && visibleGuildIds.has(g.id));
+  }, [sortedGuilds, visibleGuildIds]);
+
   const visibleSeasons = hideLatestSeason && seasons.length > 0 ? seasons.slice(1) : seasons;
 
   const exportSeasonsForView = useMemo(() => {
     if (!exportConfig) return [];
-    const fromSeason = seasons.find(s => s.id === exportConfig.seasonFrom);
-    const toSeason = seasons.find(s => s.id === exportConfig.seasonTo);
-    if (!fromSeason || !toSeason) return [];
-    const minNum = Math.min(fromSeason.season_number, toSeason.season_number);
-    const maxNum = Math.max(fromSeason.season_number, toSeason.season_number);
-    return seasons
-      .filter(s => s.season_number >= minNum && s.season_number <= maxNum)
-      .sort((a, b) => a.season_number - b.season_number);
+    // seasons is ordered descending by season_number; use index-based slicing
+    const fromIdx = seasons.findIndex(s => s.id === exportConfig.seasonFrom);
+    const toIdx = seasons.findIndex(s => s.id === exportConfig.seasonTo);
+    if (fromIdx === -1 || toIdx === -1) return [];
+    const minIdx = Math.min(fromIdx, toIdx);
+    const maxIdx = Math.max(fromIdx, toIdx);
+    return seasons.slice(minIdx, maxIdx + 1).reverse();
   }, [exportConfig, seasons]);
 
   const exportGuildsForView = useMemo(() => {
@@ -299,7 +306,7 @@ export default function AllianceRaidRecord() {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
-                {t('alliance_raid.hide_latest_season', '隱藏最新賽季')}
+                {t('alliance_raid.hide_latest_season')}
               </span>
               <button
                 onClick={() => setHideLatestSeason(!hideLatestSeason)}
@@ -319,21 +326,31 @@ export default function AllianceRaidRecord() {
 
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
-                {t('alliance_raid.show_score', '顯示分數')}
+                {t('alliance_raid.hide_score')}
               </span>
               <button
-                onClick={() => setShowScoreInTable(!showScoreInTable)}
+                onClick={() => setHideScoreInTable(!hideScoreInTable)}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                  showScoreInTable ? 'bg-amber-600' : 'bg-stone-300 dark:bg-stone-600'
+                  hideScoreInTable ? 'bg-amber-600' : 'bg-stone-300 dark:bg-stone-600'
                 }`}
               >
                 <span
                   className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    showScoreInTable ? 'translate-x-[18px]' : 'translate-x-1'
+                    hideScoreInTable ? 'translate-x-[18px]' : 'translate-x-1'
                   }`}
                 />
               </button>
             </div>
+
+            <div className="h-6 w-px bg-stone-300 dark:bg-stone-700 mx-1"></div>
+
+            <button
+              onClick={() => setIsDisplayOptionsModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg hover:bg-stone-300 dark:hover:bg-stone-600 transition-colors text-sm font-medium"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>{t('alliance_raid.display_options')}</span>
+            </button>
 
             <div className="h-6 w-px bg-stone-300 dark:bg-stone-700 mx-1"></div>
 
@@ -353,7 +370,7 @@ export default function AllianceRaidRecord() {
             <button
               onClick={() => navigate('/raid-manager')}
               className="flex items-center justify-center p-2 bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg hover:bg-stone-300 dark:hover:bg-stone-600 transition-colors ml-1"
-              title={t('header.guild_raid_manager', '公會聯合戰管理')}
+              title={t('header.guild_raid_manager')}
             >
               <Undo2 className="w-5 h-5" />
             </button>
@@ -370,7 +387,7 @@ export default function AllianceRaidRecord() {
         <div className="bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden flex flex-col">
           {loading ? (
             <div className="p-12 text-center text-stone-500 dark:text-stone-400">
-              {t('common.loading', '載入中...')}
+              {t('common.loading')}
             </div>
           ) : seasons.length === 0 ? (
             <div className="p-12 text-center text-stone-500 dark:text-stone-400">
@@ -429,7 +446,7 @@ export default function AllianceRaidRecord() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedGuilds.map((guild, index) => {
+                  {displayedGuilds.map((guild) => {
                     const tierClasses = getTierColor(guild.tier || 0);
                     // Extract background and text classes
                     const bgClasses = tierClasses.split(' ').filter(c => c.startsWith('bg-') || c.startsWith('dark:bg-')).join(' ');
@@ -498,7 +515,7 @@ export default function AllianceRaidRecord() {
                                         }`}>
                                         {record.rank}
                                       </div>
-                                      {record.score > 0 && showScoreInTable && (
+                                      {record.score > 0 && !hideScoreInTable && (
                                         <div className="text-[10px] text-stone-500 dark:text-stone-400 leading-tight">
                                           ({record.score.toLocaleString()})
                                         </div>
@@ -547,9 +564,20 @@ export default function AllianceRaidRecord() {
         onClose={() => setIsDownloadModalOpen(false)}
         seasons={seasons}
         guilds={sortedGuilds}
-        showScoreInTable={showScoreInTable}
+        showScoreInTable={!hideScoreInTable}
         hideLatestSeason={hideLatestSeason}
         onDownload={handleDownloadFromModal}
+      />
+
+      <AllianceRaidDisplayOptionsModal
+        isOpen={isDisplayOptionsModalOpen}
+        onClose={() => setIsDisplayOptionsModalOpen(false)}
+        guilds={sortedGuilds}
+        initialSelectedIds={visibleGuildIds ?? new Set(sortedGuilds.map(g => g.id).filter(Boolean) as string[])}
+        onApply={(ids) => {
+          setVisibleGuildIds(ids.size === sortedGuilds.length ? null : ids);
+          setIsDisplayOptionsModalOpen(false);
+        }}
       />
 
       <AllianceRaidExportView

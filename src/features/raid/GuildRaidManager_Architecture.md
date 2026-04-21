@@ -7,7 +7,7 @@
 公會戰記分數管理頁面。僅限 manager / admin / creator 角色存取。負責協調賽季選擇、成員分數輸入、公會中位數計算、即時同步，以及賽季生命週期操作（新增、歸檔、刪除資料）。
 
 **主要依賴**
-- `supabase` — 資料庫讀寫與 Realtime 訂閱
+- `supabase` — 資料庫讀寫、Realtime 訂閱，以及歸檔後直接查詢下一賽季資料
 - `AppContext (useAppContext)` — 全域 db、userRole、userGuildRoles、updateMember、fetchAllMembers
 - `useGhostRecords` — 幽靈成員紀錄管理（`ghostRecords`, `fetchGhostRecordsForMember`, `handleAddGhostRecord`, `handleDeleteGhostRecord`）
 - `react-router-dom` — 導航至 /raid、/team
@@ -161,6 +161,45 @@ interface GuildRaidRecord {
 
 ---
 
+### `useMemberMoveAnnounce(selectedSeasonId, archivedSeasonRecords, nextSeasonRecords, members, guilds, isSelectedSeasonArchived)`
+`src/features/raid/hooks/useMemberMoveAnnounce.ts`
+
+比對兩個賽季的 `season_guild` 欄位，生成各公會的成員移動摘要（招收 / 送出）。由 `SeasonActionsPanel` 透過 `MemberMoveAnnounceTab` 呈現並複製公告文字。**Discord 公告生成邏輯集中於 GuildRaidManager，不在 MemberBoard。**
+
+**兩種比對模式**（由 `isNextSeasonEmpty` 決定）
+
+| 模式 | 條件 | 比對依據 |
+|------|------|---------|
+| `useCurrentGuildAsNext = true` | `nextSeasonRecords` 為空 | 歸檔賽季 `season_guild` vs 成員當前 `member.guildId` |
+| `useCurrentGuildAsNext = false` | `nextSeasonRecords` 有資料 | 歸檔賽季 `season_guild` vs 下一賽季 `season_guild` |
+
+**成員移動類型**
+- 僅出現在下一賽季（或當前）→ **recruit**（`fromGuild: ''`）
+- 僅出現在歸檔賽季 → **kick**（`toGuild: ''`）
+- 兩季皆有且公會不同 → **move**
+
+**注意**：成員名稱優先從 `members` 陣列取，若不存在（尚未同步至 `db.members`）則 fallback 至 raid record 的 `member_id`。
+
+**返回值**
+| 欄位 | 說明 |
+|------|------|
+| `moveSummaries` | `GuildMoveSummary[]`，各公會的送出/招收清單 |
+| `loading` | 是否計算中 |
+
+---
+
+### `nextSeasonRecords` fetch（GuildRaidManager 內部 useEffect）
+
+當 `isSelectedSeasonArchived = true` 時，於 `GuildRaidManager` 直接查詢下一賽季的 `member_raid_records`。
+
+**查找順序**
+1. 從 `raidData.seasons` 找 `season_number === currentSeasonNum + 1`
+2. 若未找到（新賽季尚未載入），直接查 `raid_seasons` 表，以 `season_number` 為鍵
+
+**deps**：`[raidData.isSelectedSeasonArchived, raidData.selectedSeason?.season_number, raidData.selectedSeason?.id]`（使用純量值避免 object reference 造成 stale closure）
+
+---
+
 ### `useGuildStats(canManage, targetTier)`
 `src/features/raid/hooks/useGuildStats.ts`
 
@@ -212,6 +251,7 @@ GuildRaidManager
 - `GuildRaidTable.onBlur: (memberId, guildId) => void` → 直接傳 `editor.handleAutoSave`（useCallback 穩定引用）
 - `GuildRaidTable.onFetchGhostRecords` → `fetchGhostRecordsForMember`（modal 打開時懶載入，已拉過不重複請求）
 - `GuildRaidTable` 接收 `rowHeights / headerHeight / theadHeight` 及 onChange callback，實現跨表格行高同步
+- `SeasonActionsPanel` 改為接收 `archivedSeasonRecords`（當前已歸檔賽季）和 `nextSeasonRecords`（下一賽季），取代原本的單一 `records` prop
 
 ---
 
@@ -226,3 +266,4 @@ GuildRaidManager
 | `getSortedMembers(guildId)` | 依賴多個 hook 的資料，保留在組件較清晰 |
 | `getTierColorActive(tier)` | 純 UI 工具函式 |
 | `handleAddGhostRecord` | 薄包裝，傳入 selectedSeason.season_number |
+| `nextSeasonRecords` + fetch useEffect | 當前賽季已歸檔時，查詢下一賽季紀錄；供 SeasonActionsPanel 做成員移動比對 |

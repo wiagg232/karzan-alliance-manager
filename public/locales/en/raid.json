@@ -18,6 +18,7 @@
     "generating": "Generating...",
     "include_score": "Include Score",
     "hide_latest_season": "Hide Latest Season",
+    "hide_score": "Hide Score",
     "no_records": "No season records available.",
     "export_failed": "Failed to generate image",
     "history_title": "Alliance Raid History",
@@ -30,7 +31,10 @@
     "download_modal_select_guild": "Select Guilds",
     "download_modal_select_all": "Select All / Deselect All",
     "download_modal_selected_count": "Selected {{selected}} / {{total}} guilds",
-    "download_png": "Download PNG"
+    "download_png": "Download PNG",
+    "display_options": "Display Options",
+    "display_options_modal_title": "Display Options",
+    "display_options_apply": "Apply"
   },
   "raid": {
     "title_guild_manager": "Guild Raid Manager",

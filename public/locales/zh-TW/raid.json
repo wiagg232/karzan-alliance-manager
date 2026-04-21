@@ -18,6 +18,7 @@
     "generating": "生成中...",
     "include_score": "包含分數",
     "hide_latest_season": "隱藏最新賽季",
+    "hide_score": "隱藏分數",
     "no_records": "目前沒有任何賽季記錄。",
     "export_failed": "生成圖片失敗",
     "history_title": "聯盟成績歷史",
@@ -30,7 +31,10 @@
     "download_modal_select_guild": "選擇公會",
     "download_modal_select_all": "全選 / 全不選",
     "download_modal_selected_count": "已選 {{selected}} / {{total}} 個公會",
-    "download_png": "下載 PNG"
+    "download_png": "下載 PNG",
+    "display_options": "顯示選項",
+    "display_options_modal_title": "顯示選項",
+    "display_options_apply": "套用"
   },
   "raid": {
     "title_guild_manager": "公會聯合戰管理",
